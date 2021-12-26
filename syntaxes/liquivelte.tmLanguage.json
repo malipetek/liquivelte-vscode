@@ -1,0 +1,1082 @@
+{
+  "name": "Liquivelte Component",
+  "scopeName": "source.liquivelte",
+  "fileTypes": [
+    "liquivelte"
+  ],
+  "uuid": "7582b62f-51d9-4a84-8c8d-fc189530faf6",
+  "injections": {
+    "L:meta.script.liquivelte meta.lang.javascript - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.js",
+          "patterns": [
+            {
+              "include": "source.js"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.script.liquivelte (meta.lang.ts | meta.lang.typescript) - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.ts",
+          "patterns": [
+            {
+              "include": "source.ts"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.script.liquivelte meta.lang.coffee - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.coffee",
+          "patterns": [
+            {
+              "include": "source.coffee"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.script.liquivelte - meta.lang - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.js",
+          "patterns": [
+            {
+              "include": "source.js"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.stylus - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.stylus",
+          "patterns": [
+            {
+              "include": "source.stylus"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.sass - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.sass",
+          "patterns": [
+            {
+              "include": "source.sass"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.css - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.css",
+          "patterns": [
+            {
+              "include": "source.css"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.scss - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.css.scss",
+          "patterns": [
+            {
+              "include": "source.css.scss"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.less - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.css.less",
+          "patterns": [
+            {
+              "include": "source.css.less"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte meta.lang.postcss - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.css.postcss",
+          "patterns": [
+            {
+              "include": "source.css.postcss"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.style.liquivelte - meta.lang - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "source.css",
+          "patterns": [
+            {
+              "include": "source.css"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.template.liquivelte meta.lang.pug - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)(?!</)",
+          "end": "(?=</)",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "text.pug",
+          "patterns": [
+            {
+              "include": "text.pug"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.template.liquivelte - meta.lang - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?<=>)\\s",
+          "end": "(?=</template)",
+          "patterns": [
+            {
+              "include": "#scope"
+            }
+          ]
+        }
+      ]
+    },
+    "L:(source.ts, source.js, source.coffee)": {
+      "patterns": [
+        {
+          "match": "(?<![_$[:alnum:]])\\$(?=[_[:alpha:]][_$[:alnum:]]*)",
+          "name": "punctuation.definition.variable.liquivelte"
+        },
+        {
+          "match": "(?<![_$[:alnum:]])(\\$\\$)(?=props|restProps|slots)",
+          "name": "punctuation.definition.variable.liquivelte"
+        }
+      ]
+    }
+  },
+  "patterns": [
+    {
+      "include": "#scope"
+    }
+  ],
+  "repository": {
+    "scope": {
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#special-tags"
+        },
+        {
+          "include": "#tags"
+        },
+        {
+          "include": "#interpolation"
+        },
+        {
+          "begin": "(?<=>|-?[}%]?})",
+          "end": "(?=<|{[{%]?-?)",
+          "name": "text.liquivelte"
+        }
+      ]
+    },
+    "comments": {
+      "begin": "<!--",
+      "end": "-->",
+      "captures": {
+        "0": {
+          "name": "punctuation.definition.comment.liquivelte"
+        }
+      },
+      "name": "comment.block.liquivelte",
+      "patterns": [
+        {
+          "begin": "(@)(component)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.liquivelte"
+            },
+            "2": {
+              "name": "storage.type.class.component.liquivelte keyword.declaration.class.component.liquivelte"
+            }
+          },
+          "end": "(?=-->)",
+          "contentName": "comment.block.documentation.liquivelte",
+          "patterns": [
+            {
+              "match": ".*?(?=-->)",
+              "captures": {
+                "0": {
+                  "patterns": [
+                    {
+                      "include": "text.html.markdown"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "include": "text.html.markdown"
+            }
+          ]
+        },
+        {
+          "match": "\\G-?>|<!--(?!>)|<!-(?=-->)|--!>",
+          "name": "invalid.illegal.characters-not-allowed-here.liquivelte"
+        }
+      ]
+    },
+    "destructuring": {
+      "patterns": [
+        {
+          "begin": "(?={%?)",
+          "end": "(?<=%?})",
+          "name": "meta.embedded.expression.liquivelte source.ts",
+          "patterns": [
+            {
+              "include": "source.ts#object-binding-pattern"
+            }
+          ]
+        },
+        {
+          "begin": "(?=\\[)",
+          "end": "(?<=\\])",
+          "name": "meta.embedded.expression.liquivelte source.ts",
+          "patterns": [
+            {
+              "include": "source.ts#array-binding-pattern"
+            }
+          ]
+        }
+      ]
+    },
+    "interpolation": {
+      "patterns": [
+        {
+          "begin": "{[{%]?-?",
+          "end": "-?[%}]?}",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.section.embedded.begin.liquivelte"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.section.embedded.end.liquivelte"
+            }
+          },
+          "contentName": "meta.embedded.expression.liquivelte source.ts",
+          "patterns": [
+            {
+              "begin": "\\G\\s*(?={[{%]?-?)",
+              "end": "(?<=-?[%}]})",
+              "patterns": [
+                {
+                  "include": "source.ts#object-literal"
+                }
+              ]
+            },
+            {
+              "include": "source.ts"
+            }
+          ]
+        }
+      ]
+    },
+    "special-tags": {
+      "patterns": [
+        {
+          "include": "#special-tags-void"
+        },
+        {
+          "include": "#special-tags-block-begin"
+        },
+        {
+          "include": "#special-tags-block-end"
+        }
+      ]
+    },
+    "special-tags-keywords": {
+      "match": "([%#@/:])\\s?(else\\s+if|[a-z]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.keyword.liquivelte"
+        },
+        "2": {
+          "patterns": [
+            {
+              "match": "if|unless|else\\s+if|else|endif|endunless|assign",
+              "name": "keyword.control.conditional.liquivelte"
+            },
+            {
+              "match": "each|for|in|key|endfor",
+              "name": "keyword.control.liquivelte"
+            },
+            {
+              "match": "await|then|catch",
+              "name": "keyword.control.flow.liquivelte"
+            },
+            {
+              "match": "html",
+              "name": "keyword.other.liquivelte"
+            },
+            {
+              "match": "debug",
+              "name": "keyword.other.debugger.liquivelte"
+            }
+          ]
+        }
+      }
+    },
+    "special-tags-modes": {
+      "patterns": [
+        {
+          "begin": "(?<=(if|key|then|catch|html).*?)\\G",
+          "end": "(?=[%}])",
+          "name": "meta.embedded.expression.liquivelte source.ts",
+          "patterns": [
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=each.*?)\\G",
+          "end": "(?=[%}]?})",
+          "patterns": [
+            {
+              "begin": "\\G\\s*?(?=\\S)",
+              "end": "(?=(?:^\\s*|\\s+)(as))",
+              "contentName": "meta.embedded.expression.liquivelte source.ts",
+              "patterns": [
+                {
+                  "include": "source.ts"
+                }
+              ]
+            },
+            {
+              "begin": "(as)",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.control.as.liquivelte"
+                }
+              },
+              "end": "(?=})",
+              "patterns": [
+                {
+                  "include": "#destructuring"
+                },
+                {
+                  "begin": "\\(",
+                  "end": "\\)|(?=})",
+                  "captures": {
+                    "0": {
+                      "name": "meta.brace.round.liquivelte"
+                    }
+                  },
+                  "contentName": "meta.embedded.expression.liquivelte source.ts",
+                  "patterns": [
+                    {
+                      "include": "source.ts"
+                    }
+                  ]
+                },
+                {
+                  "match": "(\\s*([_$[:alpha:]][_$[:alnum:]]*)\\s*)",
+                  "captures": {
+                    "1": {
+                      "name": "meta.embedded.expression.liquivelte source.ts",
+                      "patterns": [
+                        {
+                          "include": "source.ts"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "match": ",",
+                  "name": "punctuation.separator.liquivelte"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "begin": "(?<=for.*?)\\G",
+          "end": "(?=[%}]?})",
+          "patterns": [
+            {
+              "begin": "\\G\\s*?(?=end\\S)",
+              "end": "(?=(?:^\\s*|\\s+)(in))",
+              "contentName": "meta.embedded.expression.liquivelte source.ts",
+              "patterns": [
+                {
+                  "include": "source.ts"
+                }
+              ]
+            },
+            {
+              "begin": "(in)",
+              "beginCaptures": {
+                "1": {
+                  "name": "keyword.control.as.liquivelte"
+                }
+              },
+              "end": "(?=%})",
+              "patterns": [
+                {
+                  "include": "#destructuring"
+                },
+                {
+                  "begin": "\\(",
+                  "end": "\\)|(?=})",
+                  "captures": {
+                    "0": {
+                      "name": "meta.brace.round.liquivelte"
+                    }
+                  },
+                  "contentName": "meta.embedded.expression.liquivelte source.ts",
+                  "patterns": [
+                    {
+                      "include": "source.ts"
+                    }
+                  ]
+                },
+                {
+                  "match": "(\\s*([_$[:alpha:]][_$[:alnum:]]*)\\s*)",
+                  "captures": {
+                    "1": {
+                      "name": "meta.embedded.expression.liquivelte source.ts",
+                      "patterns": [
+                        {
+                          "include": "source.ts"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "match": ",",
+                  "name": "punctuation.separator.liquivelte"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "begin": "(?<=await.*?)\\G",
+          "end": "(?=})",
+          "patterns": [
+            {
+              "begin": "\\G\\s*?(?=\\S)",
+              "end": "\\s+(then)|(?=})",
+              "endCaptures": {
+                "1": {
+                  "name": "keyword.control.flow.liquivelte"
+                }
+              },
+              "contentName": "meta.embedded.expression.liquivelte source.ts",
+              "patterns": [
+                {
+                  "include": "source.ts"
+                }
+              ]
+            },
+            {
+              "begin": "(?<=then\\b)",
+              "end": "(?=})",
+              "contentName": "meta.embedded.expression.liquivelte source.ts",
+              "patterns": [
+                {
+                  "include": "source.ts"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "begin": "(?<=debug.*?)\\G",
+          "end": "(?=})",
+          "patterns": [
+            {
+              "match": "[_$[:alpha:]][_$[:alnum:]]*",
+              "captures": {
+                "0": {
+                  "name": "meta.embedded.expression.liquivelte source.ts",
+                  "patterns": [
+                    {
+                      "include": "source.ts"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.liquivelte"
+            }
+          ]
+        }
+      ]
+    },
+    "special-tags-void": {
+      "begin": "({%*)\\s*((?:[@:])(else\\s+if|unless|[a-z]*))",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.block.begin.liquivelte"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#special-tags-keywords"
+            }
+          ]
+        }
+      },
+      "end": "[%}]?}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.block.end.liquivelte"
+        }
+      },
+      "name": "meta.special.$3.liquivelte",
+      "patterns": [
+        {
+          "include": "#special-tags-modes"
+        }
+      ]
+    },
+    "special-tags-block-begin": {
+      "begin": "([{%]?)\\s*([#%]\\s*([a-z]*))",
+      "end": "([%}])",
+      "name": "meta.special.$3.liquivelte meta.special.start.liquivelte",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.block.begin.liquivelte"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#special-tags-keywords"
+            }
+          ]
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.block.end.liquivelte"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#special-tags-modes"
+        }
+      ]
+    },
+    "special-tags-block-end": {
+      "begin": "([{%])\\s*(/([a-z]*))",
+      "end": "([%}])",
+      "name": "meta.special.$3.liquivelte meta.special.end.liquivelte",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.block.begin.liquivelte"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#special-tags-keywords"
+            }
+          ]
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.block.end.liquivelte"
+        }
+      }
+    },
+    "attributes": {
+      "patterns": [
+        {
+          "include": "#attributes-directives"
+        },
+        {
+          "include": "#attributes-keyvalue"
+        },
+        {
+          "include": "#attributes-interpolated"
+        }
+      ]
+    },
+    "attributes-interpolated": {
+      "begin": "(?<!:|=)\\s*({)",
+      "end": "(\\})",
+      "captures": {
+        "1": {
+          "name": "entity.other.attribute-name.liquivelte"
+        }
+      },
+      "contentName": "meta.embedded.expression.liquivelte source.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    "attributes-keyvalue": {
+      "begin": "([_$[:alpha:]][_\\-$[:alnum:]]*)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.other.attribute-name.liquivelte"
+        }
+      },
+      "end": "(?=\\s*+[^=\\s])",
+      "name": "meta.attribute.$1.liquivelte",
+      "patterns": [
+        {
+          "include": "#attributes-value"
+        }
+      ]
+    },
+    "attributes-value": {
+      "begin": "=",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.separator.key-value.liquivelte"
+        }
+      },
+      "end": "(?<=[^\\s=])(?!\\s*=)|(?=/?>)",
+      "patterns": [
+        {
+          "include": "#interpolation"
+        },
+        {
+          "match": "([0-9._]+[\\w]{,4})(?=\\s|/?>)",
+          "name": "constant.numeric.decimal.liquivelte",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "match": "([^\\s\"'=<>`/]|/(?!>))+",
+          "name": "string.unquoted.liquivelte",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "begin": "(['\"])",
+          "end": "\\1",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.liquivelte"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.liquivelte"
+            }
+          },
+          "name": "string.quoted.liquivelte",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            }
+          ]
+        }
+      ]
+    },
+    "attributes-directives-keywords": {
+      "patterns": [
+        {
+          "match": "on|use|bind",
+          "name": "keyword.control.liquivelte"
+        },
+        {
+          "match": "transition|in|out|animate",
+          "name": "keyword.other.animation.liquivelte"
+        },
+        {
+          "match": "let",
+          "name": "storage.type.liquivelte"
+        },
+        {
+          "match": "class",
+          "name": "entity.other.attribute-name.liquivelte"
+        }
+      ]
+    },
+    "attributes-directives-types": {
+      "patterns": [
+        {
+          "match": "(?<=(on):).*$",
+          "name": "entity.name.type.liquivelte"
+        },
+        {
+          "match": "(?<=(bind):).*$",
+          "name": "variable.parameter.liquivelte"
+        },
+        {
+          "match": "(?<=(use|transition|in|out|animate):).*$",
+          "name": "variable.function.liquivelte"
+        },
+        {
+          "match": "(?<=(let|class):).*$",
+          "name": "variable.parameter.liquivelte"
+        }
+      ]
+    },
+    "attributes-directives-types-assigned": {
+      "patterns": [
+        {
+          "match": "(?<=(bind):)this$",
+          "name": "variable.language.liquivelte"
+        },
+        {
+          "match": "(?<=(bind):).*$",
+          "name": "entity.name.type.liquivelte"
+        },
+        {
+          "match": "(?<=(class):).*$",
+          "name": "entity.other.attribute-name.class.liquivelte"
+        },
+        {
+          "include": "#attributes-directives-types"
+        }
+      ]
+    },
+    "attributes-directives": {
+      "begin": "(?<!<)(on|use|bind|transition|in|out|animate|let|class)(:)(?:([_$[:alpha:]][_\\-$[:alnum:]]*(?=\\s*=))|([_$[:alpha:]][_\\-$[:alnum:]]*))((\\|\\w+)*)",
+      "beginCaptures": {
+        "1": {
+          "patterns": [
+            {
+              "include": "#attributes-directives-keywords"
+            }
+          ]
+        },
+        "2": {
+          "name": "punctuation.definition.keyword.liquivelte"
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "#attributes-directives-types-assigned"
+            }
+          ]
+        },
+        "4": {
+          "patterns": [
+            {
+              "include": "#attributes-directives-types"
+            }
+          ]
+        },
+        "5": {
+          "patterns": [
+            {
+              "match": "\\w+",
+              "name": "support.function.liquivelte"
+            },
+            {
+              "match": "\\|",
+              "name": "punctuation.separator.liquivelte"
+            }
+          ]
+        }
+      },
+      "end": "(?=\\s*+[^=\\s])",
+      "name": "meta.directive.$1.liquivelte",
+      "patterns": [
+        {
+          "include": "#attributes-value"
+        }
+      ]
+    },
+    "tags": {
+      "patterns": [
+        {
+          "include": "#tags-lang"
+        },
+        {
+          "include": "#tags-void"
+        },
+        {
+          "include": "#tags-general-end"
+        },
+        {
+          "include": "#tags-general-start"
+        }
+      ]
+    },
+    "tags-name": {
+      "patterns": [
+        {
+          "match": "(svelte)(:)([a-z][\\w0-9:-]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.liquivelte"
+            },
+            "2": {
+              "name": "punctuation.definition.keyword.liquivelte"
+            },
+            "3": {
+              "name": "entity.name.tag.liquivelte"
+            }
+          }
+        },
+        {
+          "match": "slot",
+          "name": "keyword.control.liquivelte"
+        },
+        {
+          "match": "[A-Z][a-zA-Z0-9_]*",
+          "name": "support.class.component.liquivelte"
+        },
+        {
+          "match": "[a-z][\\w0-9:]*-[\\w0-9:-]*",
+          "name": "meta.tag.custom.liquivelte entity.name.tag.liquivelte"
+        },
+        {
+          "match": "[a-z][\\w0-9:-]*",
+          "name": "entity.name.tag.liquivelte"
+        }
+      ]
+    },
+    "tags-start-attributes": {
+      "begin": "\\G",
+      "end": "(?=/?>)",
+      "name": "meta.tag.start.liquivelte",
+      "patterns": [
+        {
+          "include": "#attributes"
+        }
+      ]
+    },
+    "tags-lang-start-attributes": {
+      "begin": "\\G",
+      "end": "(?=/>)|>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.tag.end.liquivelte"
+        }
+      },
+      "name": "meta.tag.start.liquivelte",
+      "patterns": [
+        {
+          "include": "#attributes"
+        }
+      ]
+    },
+    "tags-start-node": {
+      "match": "(<)([^/\\s>/]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.liquivelte"
+        },
+        "2": {
+          "patterns": [
+            {
+              "include": "#tags-name"
+            }
+          ]
+        }
+      },
+      "name": "meta.tag.start.liquivelte"
+    },
+    "tags-end-node": {
+      "match": "(</)(.*?)\\s*(>)|(/>)",
+      "captures": {
+        "1": {
+          "name": "meta.tag.end.liquivelte punctuation.definition.tag.begin.liquivelte"
+        },
+        "2": {
+          "name": "meta.tag.end.liquivelte",
+          "patterns": [
+            {
+              "include": "#tags-name"
+            }
+          ]
+        },
+        "3": {
+          "name": "meta.tag.end.liquivelte punctuation.definition.tag.end.liquivelte"
+        },
+        "4": {
+          "name": "meta.tag.start.liquivelte punctuation.definition.tag.end.liquivelte"
+        }
+      }
+    },
+    "tags-lang": {
+      "begin": "<(script|style|template)",
+      "end": "</\\1\\s*>|/>",
+      "beginCaptures": {
+        "0": {
+          "patterns": [
+            {
+              "include": "#tags-start-node"
+            }
+          ]
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "patterns": [
+            {
+              "include": "#tags-end-node"
+            }
+          ]
+        }
+      },
+      "name": "meta.$1.liquivelte",
+      "patterns": [
+        {
+          "begin": "\\G(?=\\s*[^>]*?(type|lang)\\s*=\\s*(['\"]|)(?:text/)?(\\w+)\\2)",
+          "end": "(?=</|/>)",
+          "name": "meta.lang.$3.liquivelte",
+          "patterns": [
+            {
+              "include": "#tags-lang-start-attributes"
+            }
+          ]
+        },
+        {
+          "include": "#tags-lang-start-attributes"
+        }
+      ]
+    },
+    "tags-void": {
+      "begin": "(<)(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(?=\\s|/?>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.liquivelte"
+        },
+        "2": {
+          "name": "entity.name.tag.liquivelte"
+        }
+      },
+      "end": "/?>",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.tag.begin.liquivelte"
+        }
+      },
+      "name": "meta.tag.void.liquivelte",
+      "patterns": [
+        {
+          "include": "#attributes"
+        }
+      ]
+    },
+    "tags-general-start": {
+      "begin": "(<)([^/\\s>/]*)",
+      "end": "(/?>)",
+      "beginCaptures": {
+        "0": {
+          "patterns": [
+            {
+              "include": "#tags-start-node"
+            }
+          ]
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "meta.tag.start.liquivelte punctuation.definition.tag.end.liquivelte"
+        }
+      },
+      "name": "meta.scope.tag.$2.liquivelte",
+      "patterns": [
+        {
+          "include": "#tags-start-attributes"
+        }
+      ]
+    },
+    "tags-general-end": {
+      "begin": "(</)([^/\\s>]*)",
+      "end": "(>)",
+      "beginCaptures": {
+        "1": {
+          "name": "meta.tag.end.liquivelte punctuation.definition.tag.begin.liquivelte"
+        },
+        "2": {
+          "name": "meta.tag.end.liquivelte",
+          "patterns": [
+            {
+              "include": "#tags-name"
+            }
+          ]
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "meta.tag.end.liquivelte punctuation.definition.tag.end.liquivelte"
+        }
+      },
+      "name": "meta.scope.tag.$2.liquivelte"
+    }
+  }
+}

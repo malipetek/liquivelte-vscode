@@ -1,0 +1,511 @@
+{
+	"name": "liquivelte",
+	"displayName": "Liquivelte",
+	"description": "write svelte with liquid",
+	"publisher": "liquivelte",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.55.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:liquivelte.openPreview",
+		"workspaceContains:**/*.liquivelte",
+		"onLanguage:liquivelte",
+		"onCommand:liquivelte.restartLanguageServer"
+	],
+	"main": "dist/src/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "liquivelte.openPreview",
+				"category": "Liquivelte",
+				"title": "Open Preview"
+			},
+			{
+				"command": "liquivelte.restartLanguageServer",
+				"title": "Liquivelte: Restart Language Server"
+			}
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Liquivelte",
+			"properties": {
+				"liquivelte.enable-ts-plugin": {
+					"type": "boolean",
+					"default": false,
+					"title": "Enable TypeScript Liquivelte plugin",
+					"description": "Enables a TypeScript plugin which provides intellisense for Liquivelte files inside TS/JS files."
+				},
+				"liquivelte.ask-to-enable-ts-plugin": {
+					"type": "boolean",
+					"default": false,
+					"title": "Ask to enable TypeScript Liquivelte plugin",
+					"description": "Ask on startup to enable the TypeScript plugin."
+				},
+				"liquivelte.language-server.runtime": {
+					"scope": "application",
+					"type": "string",
+					"title": "Language Server Runtime",
+					"description": "- You normally don't need this - Path to the node executable to use to spawn the language server. This is useful when you depend on native modules such as node-sass as without this they will run in the context of vscode, meaning node version mismatch is likely. Minimum required node version is 12.17. This setting can only be changed in user settings for security reasons."
+				},
+				"liquivelte.language-server.ls-path": {
+					"scope": "application",
+					"type": "string",
+					"title": "Language Server Path",
+					"description": "- You normally don't set this - Path to the language server executable. If you installed the \"svelte-language-server\" npm package, it's within there at \"bin/server.js\". Path can be either relative to your workspace root or absolute. Set this only if you want to use a custom version of the language server. This will then also use the workspace version of TypeScript. This setting can only be changed in user settings for security reasons."
+				},
+				"liquivelte.language-server.port": {
+					"type": "number",
+					"title": "Language Server Port",
+					"description": "- You normally don't set this - At which port to spawn the language server. Can be used for attaching to the process for debugging / profiling. If you experience crashes due to \"port already in use\", try setting the port. -1 = default port is used.",
+					"default": -1
+				},
+				"liquivelte.trace.server": {
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the Liquivelte Language Server."
+				},
+				"liquivelte.plugin.typescript.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript",
+					"description": "Enable the TypeScript plugin"
+				},
+				"liquivelte.plugin.typescript.diagnostics.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Diagnostics",
+					"description": "Enable diagnostic messages for TypeScript"
+				},
+				"liquivelte.plugin.typescript.hover.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Hover Info",
+					"description": "Enable hover info for TypeScript"
+				},
+				"liquivelte.plugin.typescript.documentSymbols.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Symbols in Outline",
+					"description": "Enable document symbols for TypeScript"
+				},
+				"liquivelte.plugin.typescript.completions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Completions",
+					"description": "Enable completions for TypeScript"
+				},
+				"liquivelte.plugin.typescript.findReferences.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Find References",
+					"description": "Enable find-references for TypeScript"
+				},
+				"liquivelte.plugin.typescript.definitions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Go to Definition",
+					"description": "Enable go to definition for TypeScript"
+				},
+				"liquivelte.plugin.typescript.codeActions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Code Actions",
+					"description": "Enable code actions for TypeScript"
+				},
+				"liquivelte.plugin.typescript.selectionRange.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Selection Range",
+					"description": "Enable selection range for TypeScript"
+				},
+				"liquivelte.plugin.typescript.signatureHelp.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Signature Help",
+					"description": "Enable signature help (parameter hints) for TypeScript"
+				},
+				"liquivelte.plugin.typescript.rename.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Rename",
+					"description": "Enable rename functionality for JS/TS variables inside Liquivelte files"
+				},
+				"liquivelte.plugin.typescript.semanticTokens.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "TypeScript: Semantic Tokens",
+					"description": "Enable semantic tokens (semantic highlight) for TypeScript."
+				},
+				"liquivelte.plugin.typescript.implementation.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Typescript: Go to Implementation",
+					"description": "Enable go to implementation for Typescript"
+				},
+				"liquivelte.plugin.css.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS",
+					"description": "Enable the CSS plugin"
+				},
+				"liquivelte.plugin.css.globals": {
+					"type": "string",
+					"default": "",
+					"title": "CSS: Global Files",
+					"description": "Which css files should be checked for global variables (`--global-var: value;`). These variables are added to the css completions. String of comma-separated file paths or globs relative to workspace root."
+				},
+				"liquivelte.plugin.css.diagnostics.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Diagnostics",
+					"description": "Enable diagnostic messages for CSS"
+				},
+				"liquivelte.plugin.css.hover.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Hover Info",
+					"description": "Enable hover info for CSS"
+				},
+				"liquivelte.plugin.css.completions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Auto Complete",
+					"description": "Enable auto completions for CSS"
+				},
+				"liquivelte.plugin.css.completions.emmet": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Include Emmet Completions",
+					"description": "Enable emmet auto completions for CSS"
+				},
+				"liquivelte.plugin.css.documentColors.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Document Colors",
+					"description": "Enable document colors for CSS"
+				},
+				"liquivelte.plugin.css.colorPresentations.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Color Picker",
+					"description": "Enable color picker for CSS"
+				},
+				"liquivelte.plugin.css.documentSymbols.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: Symbols in Outline",
+					"description": "Enable document symbols for CSS"
+				},
+				"liquivelte.plugin.css.selectionRange.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "CSS: SelectionRange",
+					"description": "Enable selection range for CSS"
+				},
+				"liquivelte.plugin.html.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML",
+					"description": "Enable the HTML plugin"
+				},
+				"liquivelte.plugin.html.hover.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Hover Info",
+					"description": "Enable hover info for HTML"
+				},
+				"liquivelte.plugin.html.completions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Auto Complete",
+					"description": "Enable auto completions for HTML"
+				},
+				"liquivelte.plugin.html.completions.emmet": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Include Emmet Completions",
+					"description": "Enable emmet auto completions for HTML"
+				},
+				"liquivelte.plugin.html.tagComplete.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Tag Auto Closing",
+					"description": "Enable HTML tag auto closing"
+				},
+				"liquivelte.plugin.html.documentSymbols.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Symbols in Outline",
+					"description": "Enable document symbols for HTML"
+				},
+				"liquivelte.plugin.html.linkedEditing.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Linked Editing",
+					"description": "Enable Linked Editing for HTML"
+				},
+				"liquivelte.plugin.html.renameTags.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "HTML: Rename tags",
+					"description": "Enable rename for the opening/closing tag pairs in HTML"
+				},
+				"liquivelte.plugin.liquivelte.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte",
+					"description": "Enable the Liquivelte plugin"
+				},
+				"liquivelte.plugin.liquivelte.diagnostics.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Diagnostics",
+					"description": "Enable diagnostic messages for Liquivelte"
+				},
+				"liquivelte.plugin.liquivelte.compilerWarnings": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string",
+						"enum": [
+							"ignore",
+							"error"
+						]
+					},
+					"default": {},
+					"title": "Liquivelte: Compiler Warnings Settings",
+					"description": "Liquivelte compiler warning codes to ignore or to treat as errors. Example: { 'css-unused-selector': 'ignore', 'unused-export-let': 'error'}"
+				},
+				"liquivelte.plugin.liquivelte.format.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Format",
+					"description": "Enable formatting for Liquivelte (includes css & js). You can set some formatting options through this extension. They will be ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.svelteSortOrder": {
+					"type": "string",
+					"default": "options-scripts-markup-styles",
+					"title": "Liquivelte Format: Sort Order",
+					"description": "Format: join the keys `options`, `scripts`, `markup`, `styles` with a - in the order you want. This option is ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.svelteStrictMode": {
+					"type": "boolean",
+					"default": false,
+					"title": "Liquivelte Format: Strict Mode",
+					"description": "More strict HTML syntax. This option is ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.svelteAllowShorthand": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte Format: Allow Shorthand",
+					"description": "Option to enable/disable component attribute shorthand if attribute name and expression are the same. This option is ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.svelteBracketNewLine": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte Format: Bracket New Line",
+					"description": "Put the `>` of a multiline element on a new line. This option is ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.svelteIndentScriptAndStyle": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte Format: Indent Script And Style",
+					"description": "Whether or not to indent code inside `<script>` and `<style>` tags. This option is ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.printWidth": {
+					"type": "number",
+					"default": 80,
+					"title": "Liquivelte Format: Print Width",
+					"description": "Maximum line width after which code is tried to be broken up. This is a Prettier core option. If you have the Prettier extension installed, this option is ignored and the corresponding option of that extension is used instead. This option is also ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.format.config.singleQuote": {
+					"type": "boolean",
+					"default": false,
+					"title": "Liquivelte Format: Quotes",
+					"description": "Use single quotes instead of double quotes, where possible. This is a Prettier core option. If you have the Prettier extension installed, this option is ignored and the corresponding option of that extension is used instead. This option is also ignored if there's any kind of configuration file, for example a `.prettierrc` file."
+				},
+				"liquivelte.plugin.liquivelte.completions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Completions",
+					"description": "Enable auto completions for Liquivelte"
+				},
+				"liquivelte.plugin.liquivelte.hover.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Hover",
+					"description": "Enable hover information for Liquivelte"
+				},
+				"liquivelte.plugin.liquivelte.codeActions.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Code Actions",
+					"description": "Enable Code Actions for Liquivelte"
+				},
+				"liquivelte.plugin.liquivelte.selectionRange.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Selection Range",
+					"description": "Enable selection range for Liquivelte"
+				},
+				"liquivelte.plugin.liquivelte.rename.enable": {
+					"type": "boolean",
+					"default": true,
+					"title": "Liquivelte: Rename",
+					"description": "Enable rename/move Liquivelte files functionality"
+				},
+				"liquivelte.plugin.liquivelte.defaultScriptLanguage": {
+					"type": "string",
+					"default": "none",
+					"title": "Liquivelte: Default Script Language",
+					"description": "The default language to use when generating new script tags",
+					"enum": [
+						"none",
+						"ts"
+					]
+				}
+			}
+		},
+		"languages": [
+			{
+				"id": "liquivelte",
+				"aliases": [
+					"Liquivelte",
+					"liquivelte"
+				],
+				"extensions": [
+					".liquivelte"
+				],
+				"configuration": "./language-configuration.json"
+			},
+			{
+				"id": "json",
+				"filenames": [
+					".prettierrc"
+				]
+			}
+		],
+		"grammars": [
+			{
+				"language": "liquivelte",
+				"scopeName": "source.liquivelte",
+				"path": "./syntaxes/liquivelte.tmLanguage.json",
+				"embeddedLanguages": {
+					"text.html.basic": "html",
+					"text.html.markdown": "markdown",
+					"text.pug": "jade",
+					"source.css": "css",
+					"source.css.less": "less",
+					"source.css.scss": "scss",
+					"source.css.postcss": "postcss",
+					"source.sass": "sass",
+					"source.stylus": "stylus",
+					"source.js": "javascript",
+					"source.ts": "typescript",
+					"source.coffee": "coffeescript"
+				}
+			},
+			{
+				"scopeName": "liquivelte.pug",
+				"path": "./syntaxes/pug-liquivelte.json",
+				"injectTo": [
+					"source.liquivelte"
+				],
+				"embeddedLanguages": {
+					"source.ts": "typescript",
+					"text.pug": "jade"
+				}
+			},
+			{
+				"scopeName": "liquivelte.pug.tags",
+				"path": "./syntaxes/pug-liquivelte-tags.json",
+				"injectTo": [
+					"source.liquivelte"
+				],
+				"embeddedLanguages": {
+					"source.ts": "typescript",
+					"text.pug": "jade"
+				}
+			},
+			{
+				"scopeName": "liquivelte.pug.dotblock",
+				"path": "./syntaxes/pug-liquivelte-dotblock.json",
+				"injectTo": [
+					"source.liquivelte"
+				],
+				"embeddedLanguages": {
+					"source.ts": "typescript"
+				}
+			},
+			{
+				"scopeName": "markdown.liquivelte.codeblock",
+				"path": "./syntaxes/markdown-liquivelte.json",
+				"injectTo": [
+					"text.html.markdown"
+				],
+				"embeddedLanguages": {
+					"meta.embedded.block.liquivelte": "liquivelte"
+				}
+			},
+			{
+				"scopeName": "source.css.postcss",
+				"path": "./syntaxes/postcss.json",
+				"injectTo": [
+					"source.liquivelte"
+				]
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run package",
+		"build:grammar": "npx js-yaml syntaxes/liquivelte.tmLanguage.src.yaml > syntaxes/liquivelte.tmLanguage.json && npx js-yaml syntaxes/postcss.src.yaml > syntaxes/postcss.json",
+		"build:ts": "tsc -p ./",
+		"build": "npm run build:ts && npm run build:grammar",
+		"compile": "webpack",
+		"watch": "npm run build:grammar && tsc -w -p ./",
+		"package": "webpack --mode production --devtool hidden-source-map",
+		"test-compile": "tsc -p ./",
+		"test-watch": "tsc -watch -p ./",
+		"pretest": "npm run test-compile && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@tsconfig/node12": "^1.0.0",
+		"@types/glob": "^7.1.3",
+		"@types/lodash": "^4.14.116",
+		"@types/mocha": "^8.0.4",
+		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.55.0",
+		"@typescript-eslint/eslint-plugin": "^4.14.1",
+		"@typescript-eslint/parser": "^4.14.1",
+		"eslint": "^7.19.0",
+		"glob": "^7.1.6",
+		"js-yaml": "^3.14.0",
+		"lodash": "^4.17.21",
+		"mocha": "^8.2.1",
+		"ts-loader": "^8.0.14",
+		"typescript": "^4.1.3",
+		"typescript-svelte-plugin": "*",
+		"vscode-languageclient": "^7.0.0",
+		"vscode-test": "^1.5.0",
+		"webpack": "^5.19.0",
+		"webpack-cli": "^4.4.0"
+	},
+	"dependencies": {
+		"magic-string": "^0.25.7",
+		"sourcemap-codec": "^1.4.8",
+		"svelte": "^3.42.4",
+		"svelte-language-server": "^0.14.16",
+		"uid": "^2.0.0",
+		"vscode-languageclient": "^7.0.0"
+	}
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"svelte-selectors.js","sourceRoot":"","sources":["svelte-selectors.ts"],"names":[],"mappings":";;;AAEa,QAAA,WAAW,GAAuB;IAC3C;QACI,IAAI,EAAE,WAAW;QACjB,WAAW,EAAE;;uCAEkB;QAC/B,UAAU,EAAE;YACR;gBACI,IAAI,EAAE,sBAAsB;gBAC5B,GAAG,EAAE,+BAA+B;aACvC;SACJ;KACJ;CACJ,CAAC"}
