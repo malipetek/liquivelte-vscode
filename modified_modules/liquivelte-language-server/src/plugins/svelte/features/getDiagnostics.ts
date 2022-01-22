@@ -39,7 +39,9 @@ async function tryGetDiagnostics(
     document: Document,
     svelteDoc: SvelteDocument,
     settings: CompilerWarningsSettings
-): Promise<Diagnostic[]> {
+): Promise<Diagnostic[]>
+{
+    console.log('Getting diagnostics');
     const transpiled = await svelteDoc.getTranspiled();
 
     try {

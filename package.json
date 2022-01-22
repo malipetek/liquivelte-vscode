@@ -1,7 +1,7 @@
 {
 	"name": "liquivelte",
 	"displayName": "Liquivelte",
-	"description": "write svelte with liquid",
+	"description": "Write Shopify Themes With Svelte!",
 	"publisher": "liquivelte",
 	"version": "0.0.1",
 	"engines": {
@@ -401,6 +401,7 @@
 				"embeddedLanguages": {
 					"text.html.basic": "html",
 					"text.html.markdown": "markdown",
+					"text.html.liquid": "liquid",
 					"text.pug": "jade",
 					"source.css": "css",
 					"source.css.less": "less",
@@ -501,6 +502,10 @@
 		"webpack-cli": "^4.4.0"
 	},
 	"dependencies": {
+		"fs-extra": "^10.0.0",
+		"liquidjs": "^9.31.0",
+		"liquidjs-section-tags": "^1.0.0",
+		"liquivelte-language-server": "file:modified_modules/liquivelte-language-server",
 		"magic-string": "^0.25.7",
 		"sourcemap-codec": "^1.4.8",
 		"svelte": "^3.42.4",

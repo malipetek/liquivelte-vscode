@@ -166,7 +166,7 @@ export class HTMLPlugin
         const langCompletions: CompletionItem[] = [];
         addLangCompletion('script', ['ts']);
         addLangCompletion('style', ['less', 'scss']);
-        addLangCompletion('template', ['pug']);
+        addLangCompletion('template', ['pug', 'liquid']);
         return langCompletions;
 
         function addLangCompletion(tag: string, languages: string[]) {

@@ -1,5 +1,5 @@
 {
-    "scopeName": "markdown.svelte.codeblock",
+    "scopeName": "markdown.liquivelte.codeblock",
     "fileTypes": [],
     "injectionSelector": "L:text.html.markdown",
     "patterns": [

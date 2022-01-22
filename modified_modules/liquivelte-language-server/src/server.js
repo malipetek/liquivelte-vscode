@@ -154,16 +154,16 @@ function startServer(options) {
                 executeCommandProvider: clientSupportApplyEditCommand
                     ? {
                         commands: [
-                            'function_scope_0a',
-                            'function_scope_1a',
-                            'function_scope_2a',
-                            'function_scope_3a',
-                            'constant_scope_0a',
-                            'constant_scope_1a',
-                            'constant_scope_2a',
-                            'constant_scope_3a',
-                            'extract_to_svelte_componenta',
-                            'Infer function return typea'
+                            'cope_0a',
+                            'cope_1a',
+                            'cope_2a',
+                            'cope_3a',
+                            'cope_0a',
+                            'cope_1a',
+                            'cope_2a',
+                            'cope_3a',
+                            'liquivelte_componenta',
+                            'liquitype'
                         ]
                     }
                     : undefined,

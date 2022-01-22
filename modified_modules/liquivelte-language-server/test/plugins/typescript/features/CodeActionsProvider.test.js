@@ -694,7 +694,7 @@ describe('CodeActionsProvider', () => {
                         }
                     }
                 ],
-                command: 'function_scope_0',
+                command: 'function_scope_0a',
                 title: "Extract to inner function in function 'render'"
             },
             title: 'Extract to function'

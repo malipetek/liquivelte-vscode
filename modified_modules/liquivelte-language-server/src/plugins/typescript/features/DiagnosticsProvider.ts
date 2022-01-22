@@ -156,12 +156,13 @@ function hasNoNegativeLines(diagnostic: Diagnostic): boolean {
 function isNoFalsePositive(document: Document, tsDoc: SvelteDocumentSnapshot) {
     const text = document.getText();
     const usesPug = document.getLanguageAttribute('template') === 'pug';
+    const usesLiquid = document.getLanguageAttribute('template') === 'liquid';
 
     return (diagnostic: Diagnostic) => {
         return (
             isNoJsxCannotHaveMultipleAttrsError(diagnostic) &&
             isNoUsedBeforeAssigned(diagnostic, text, tsDoc) &&
-            (!usesPug || isNoPugFalsePositive(diagnostic, document))
+            (!usesPug || !usesLiquid || isNoPugFalsePositive(diagnostic, document))
         );
     };
 }

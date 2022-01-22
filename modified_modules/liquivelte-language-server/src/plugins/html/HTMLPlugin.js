@@ -101,7 +101,7 @@ class HTMLPlugin {
         const langCompletions = [];
         addLangCompletion('script', ['ts']);
         addLangCompletion('style', ['less', 'scss']);
-        addLangCompletion('template', ['pug']);
+        addLangCompletion('template', ['pug', 'liquid']);
         return langCompletions;
         function addLangCompletion(tag, languages) {
             const existingCompletion = styleScriptTemplateCompletions.find((completion) => completion.label === tag);

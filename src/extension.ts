@@ -6,6 +6,8 @@ import liquifyTransformer from './preprocess/preprocessor';
 import { ReplaceOperation } from './types/replace-operation';
 const sourceMaps: object = {};
 import * as LanguageServer from './languageserver/src/extension';
+import path from 'path';
+import { generateAllScripts } from './generate-theme/process-theme';
 
 const openPreviews: {
 	[key: string]: ReplaceOperation[];
@@ -13,6 +15,31 @@ const openPreviews: {
 
 let timeout: NodeJS.Timer | undefined = undefined;
 
+const liquivelteProvider = new class implements vscode.TextDocumentContentProvider
+{
+
+  // emitter and its event
+  onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
+  onDidChange = this.onDidChangeEmitter.event;
+
+  async provideTextDocumentContent (uri: vscode.Uri): Promise<string>
+  {
+    // simply invoke cowsay, use uri-path as text
+    try {
+      const actualUri = vscode.Uri.parse(uri.fsPath);
+      const file = await vscode.workspace.fs.readFile(actualUri);
+      const text = file.toString();
+      const { content, map, replaceOperations } = await liquifyTransformer(text);
+
+      openPreviews[uri.fsPath] = replaceOperations;
+      // sourceMaps[actualUri] = map.generateDecodedMap();
+
+      return content;
+    } catch (e) {
+      throw e;
+    }
+  }
+};
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate (context: vscode.ExtensionContext)
@@ -22,45 +49,13 @@ export function activate (context: vscode.ExtensionContext)
 	LanguageServer.activate(context);
 
 	const liquivelteScheme = 'liquivelte';
-	const liquivelteProvider = new class implements vscode.TextDocumentContentProvider
-	{
 
-		// emitter and its event
-		onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
-		onDidChange = this.onDidChangeEmitter.event;
-
-		async provideTextDocumentContent (uri: vscode.Uri): Promise<string>
-		{
-			// simply invoke cowsay, use uri-path as text
-			try {
-				const actualUri = vscode.Uri.parse(uri.fsPath);
-				const file = await vscode.workspace.fs.readFile(actualUri);
-				const text = file.toString();
-				const { content, map, replaceOperations } = await liquifyTransformer(text);
-
-				openPreviews[uri.fsPath] = replaceOperations;
-				// sourceMaps[actualUri] = map.generateDecodedMap();
-
-				return content;
-			} catch (e) {
-				throw e;
-			}
-		}
-	};
 	subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(liquivelteScheme, liquivelteProvider));
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "liquivelte" is now active!');
 
 	vscode.window.onDidChangeVisibleTextEditors(editors =>
 	{
-		// reset open previews
-		// Object.keys(openPreviews).forEach(key =>
-		// {
-		// 	openPreviews[key] = [];
-		// });
-		// set open previews
 		editors.forEach(editor =>
 		{
 			if (editor.document.uri.scheme === 'liquivelte') {
@@ -75,6 +70,7 @@ export function activate (context: vscode.ExtensionContext)
 			}
 		}
 	});
+
 	vscode.window.onDidChangeActiveTextEditor(function (textEditor: vscode.TextEditor | undefined)
 	{
 		// console.log('visible text editor has changed: ', textEditor);
@@ -213,7 +209,61 @@ export function activate (context: vscode.ExtensionContext)
 		});
 	}));
 
+	(async () =>
+	{	
+		try {
+
+		const { workspaceFolders } = vscode.workspace;
+		console.log('workspace folders ', workspaceFolders);
+		const folders = await vscode.workspace.fs.readDirectory(workspaceFolders[0].uri);
+		let isTheme = false;
+		if (folders.some(folder => folder[0] === 'layout' && folder[1] === 2) &&
+			folders.some(folder => folder[0] === 'templates' && folder[1] === 2) &&
+			folders.some(folder => folder[0] === 'sections' && folder[1] === 2) &&
+			folders.some(folder => folder[0] === 'assets' && folder[1] === 2) &&
+			folders.some(folder => folder[0] === 'snippets' && folder[1] === 2)
+		) {
+			isTheme = true;
+		}
+
+		if (!isTheme) {
+			vscode.window.showErrorMessage('This is not a theme folder, aborting watch.', "OK");	
+		}
+			
+		await generateAllScripts();
+
+		const sections = folders.find(folder => folder[0] === 'sections');
+
+		const sectionsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, 'sections');
+
+		console.log('workspace folders 2', folders);
+		// if (workspaceFolders.length && workspaceFolders.includes()) {
+			
+			// }
+		const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.liquid');
+
+		fileWatcher.onDidChange(async (uri: vscode.Uri) =>
+		{
+			console.log('file changed ', uri);
+			
+			const parentFolder = path.parse(path.resolve(uri.path, '..'));
+
+			if (parentFolder.name === 'templates') {
+			
+
+			}
+
+			// liquidEngine.parse();
+			console.log(uri);
+		});
+	} catch (e) {
+			throw e;
+	}
+	})();
+	
 }
+
+
 
 // this method is called when your extension is deactivated
 export function deactivate () { }

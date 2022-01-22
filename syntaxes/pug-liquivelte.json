@@ -1,5 +1,5 @@
 {
-    "scopeName": "svelte.pug",
+    "scopeName": "liquivelte.pug",
     "fileTypes": [],
     "injectionSelector": "L:text.pug -meta.embedded.ts -meta.tag.other -text.block.pug, L:inline.pug -meta.embedded.ts -meta.tag.other",
     "patterns": [

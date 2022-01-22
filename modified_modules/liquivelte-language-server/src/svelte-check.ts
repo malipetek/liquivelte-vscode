@@ -15,7 +15,7 @@ import
 import { convertRange, getDiagnosticTag, mapSeverity } from './plugins/typescript/utils';
 import { pathToUrl, urlToPath } from './utils';
 
-export type SvelteCheckDiagnosticSource = 'js' | 'css' | 'liquivelte';
+export type SvelteCheckDiagnosticSource = 'js' | 'css' | 'svelte';
 
 export interface SvelteCheckOptions
 {
@@ -58,7 +58,7 @@ export class SvelteCheck
             }
         });
         // No HTMLPlugin, it does not provide diagnostics
-        if (shouldRegister('liquivelte')) {
+        if (shouldRegister('svelte')) {
             this.pluginHost.register(new SveltePlugin(this.configManager));
         }
         if (shouldRegister('css')) {
@@ -178,7 +178,7 @@ export class SvelteCheck
                     // doesn't apply to all code paths. That's why we do it here, too.
                     const skipDiagnosticsForFile =
                         (options.skipLibCheck && file.isDeclarationFile) ||
-                        (options.skipDefaultLibCheck && file.hasNoDefaultLib);
+                        (options.skipDefaultLibCheck && file.hasNoDefaultLib || 1);
 
                     const diagnostics = skipDiagnosticsForFile
                         ? []

@@ -364,7 +364,7 @@
         "2": {
           "patterns": [
             {
-              "match": "if|unless|else\\s+if|else|endif|endunless|assign",
+              "match": "if|unless|else\\s+if|else|endif|endunless|assign|include|capture|endcapture|form|endform|schema|endschema|style|endstyle|javascript|endjavascript",
               "name": "keyword.control.conditional.liquivelte"
             },
             {
