@@ -1,56 +1,86 @@
-import { preprocess } from 'svelte/compiler';
+import * as vscode from 'vscode';
+/* eslint-disable @typescript-eslint/naming-convention */
+import { preprocess, compile } from 'svelte/compiler';
 import MagicString from 'magic-string';
 import { MagicStringOptions } from 'magic-string';
 import expressionProcessor from './processor_modules/markup/expression';
 import themeImportProcessor from './processor_modules/script/theme-import';
+import liquivelteImportProcessor from './processor_modules/script/liquivelte-import';
 import ifStatementProcessor from './processor_modules/markup/ifstatement';
+import rawIncludeProcessor from './processor_modules/markup/rawinclude';
+import path from 'path';
 
 import { ReplaceOperation } from '../types/replace-operation';
 import { ImportEntry } from '../types/import-entry';
+import stripTags from '../utils/strip-tags';
 
-const replaceOperations: ReplaceOperation[] = [];
-
-export default async function liquifyTransformer (documentContent: string): Promise<{content: string, map: any, replaceOperations: any}>
+async function applyReplaces (replacers, content, filename)
 {
+  const replaceOperations: ReplaceOperation[] = [];
   let liquidImportsModule: string[] = [];
   let subImportsRegistryModule: ImportEntry[] = [];
+  let rawIncludeRegistry: any[] = [];
+  let liquidContent = content;
+
+  const options: MagicStringOptions = {
+    filename,
+    indentExclusionRanges: [],
+  };
+  
+  let magicString = new MagicString(content, options);
+
+  for (let replacer of replacers) {
+    const replaceResult = await replacer(content, magicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry });
+    // magicString = replaceResult.magicString;
+    liquidContent = replaceResult.liquidContent ? replaceResult.liquidContent : liquidContent;
+    // liquidImportsModule = [...liquidImportsModule, ...(replaceResult.liquidImportsModule || [])];
+    // subImportsRegistryModule = [...subImportsRegistryModule, ...(replaceResult.subImportsRegistryModule || [])];
+    // rawIncludeRegistry = [...rawIncludeRegistry, ...(replaceResult.rawIncludeRegistry || [])];
+    // replaceOperations.push(...replaceResult.replaceOperations);
+  }
+  return { magicString, replaceOperations, liquidContent, subImportsRegistryModule, liquidImportsModule, rawIncludeRegistry };
+}
+
+export default async function liquivelteTransformer (documentContent: string, fileUri: vscode.Uri): Promise<{ content: string, map: any, replaceOperations: any, liquidImportsModule, subImportsRegistryModule, exportedObjectVariables, exportedVariables, liquidContent: string }>
+{
+  let liquidContent = documentContent;
+  const file = path.parse(fileUri.fsPath);
+  
+
+  interface RRType
+  {
+    magicString: MagicString;
+    exportedVariables?: string[];
+    exportedObjectVariables?: any[];
+    replaceOperations: ReplaceOperation[];
+    liquidImportsModule: string[];
+    subImportsRegistryModule: ImportEntry[];
+    rawIncludeRegistry: any[];
+    liquidContent: string;
+  }
+  let RR: RRType = {
+    magicString: new MagicString(documentContent),
+    replaceOperations: [],
+    liquidContent: '',
+    subImportsRegistryModule: [],
+    liquidImportsModule: [],
+    rawIncludeRegistry: []
+  };
 
   const { code, map } = await preprocess(documentContent, {
     markup: async ({ content, filename }) =>
     {
-
-      const options: MagicStringOptions = {
-        filename,
-        indentExclusionRanges: [],
-      };
-      
-      let s = new MagicString(content, options);
-      
-      const expressionsResult = await expressionProcessor(content, s);
-      
-      s = expressionsResult.magicString;
-
-      replaceOperations.push(...expressionsResult.replaceOperations);
-
-      const importsResult = await themeImportProcessor(content, s, liquidImportsModule, subImportsRegistryModule, expressionsResult);
-      
-      s = importsResult.magicString;
-
-      liquidImportsModule = importsResult.liquidImportsModule;
-      subImportsRegistryModule = importsResult.subImportsRegistryModule;
-      
-      replaceOperations.push(...importsResult.replaceOperations);
-      
-      const ifStatementResult = await ifStatementProcessor(content, s, importsResult);
-      
-      replaceOperations.push(...ifStatementResult.replaceOperations);
-      
-      s = ifStatementResult.magicString;
-      
+      RR = await applyReplaces([
+        themeImportProcessor,
+        expressionProcessor,
+        liquivelteImportProcessor,
+        ifStatementProcessor,
+        rawIncludeProcessor
+      ], content, filename);
 
       return {
-        code: s.toString(),
-        map: s.generateMap()
+        code: RR.magicString.toString(),
+        map: RR.magicString.generateMap()
       };
     },
     script: ({ content, attributes, markup, filename }) =>
@@ -61,12 +91,18 @@ export default async function liquifyTransformer (documentContent: string): Prom
           map: undefined
         };
       }
+
       const options: MagicStringOptions = {
         filename,
         indentExclusionRanges: [],
       };
-      
+
       const s = new MagicString(content, options);
+
+      s.append(`
+${RR.rawIncludeRegistry.reduce((acc, rawInclude) => `${acc}
+export let ${rawInclude.id}
+`, '')}`);
 
       return {
         code: s.toString(),
@@ -74,8 +110,28 @@ export default async function liquifyTransformer (documentContent: string): Prom
       };
     }
   }, {
-    filename: 'App.svelte'
+    filename: `${file.name}.svelte`,
   });
 
-  return { content: code, map, replaceOperations };
+  RR.exportedVariables = [];
+  RR.exportedObjectVariables = [];
+  documentContent.replace(/export\slet\s([^=]+)\s*=\s*(\{[^\}]+\})?/gi, (a, v, o) => {
+
+    if (o) {
+      RR.exportedObjectVariables.push({ [v.trim()]: eval(`(() => (${o}))()`) });
+    } else {
+      RR.exportedVariables.push(v.trim());
+    }
+    return '';
+  });
+
+  // replaceOperations,
+  // liquidContent,
+  // subImportsRegistryModule,
+  // liquidImportsModule,
+  // rawIncludeRegistry
+
+  RR.liquidContent = stripTags(RR.liquidContent); 
+  
+  return { content: code, map, exportedVariables: [], exportedObjectVariables: [], ...RR };
 }

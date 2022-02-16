@@ -189,7 +189,7 @@ repository:
       patterns:
       # Object literals - usually used within attributes.
       - begin: \G\s*(?={[{%]?-?)
-        end: (?<=-?[%}]})
+        end: (?<=-?[%}]?})
         patterns: [ include: source.ts#object-literal ]
       - include: source.ts
 

@@ -328,7 +328,7 @@
           "patterns": [
             {
               "begin": "\\G\\s*(?={[{%]?-?)",
-              "end": "(?<=-?[%}]})",
+              "end": "(?<=-?[%}]?})",
               "patterns": [
                 {
                   "include": "source.ts#object-literal"

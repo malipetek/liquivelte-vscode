@@ -1,36 +1,13 @@
 import type MagicString from 'magic-string';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
+import getLineFromOffset from '../../../utils/get-line-from-offset';
+import createTagRegex from '../../../utils/create-tag-regex';
 
-let linesAdded: number = 0;
-const replaceOperations: ReplaceOperation[] = [];
-
-// function getLineFromOffset (lines: string[], offset: number) : number
-// {
-//   let lineCount = 0;
-//   let charCount = 0;
-//   while (charCount < offset) {
-//     lineCount++;
-//     const line = lines[lineCount];
-//     charCount += line.length + (line === '' ? 1 : 0);
-//   }
-//   return lineCount;
-// }
-
-function getLineFromOffset(str: string,offset: number) : number {
-  let line = 0;
-  let pos = 0;
-  while (pos < offset) {
-    if (str[pos] === '\n') {
-      line++;
-    }
-    pos++;
-  }
-  return line + 1;
-}
-export default function ifStatementProcessor (markup: string, ms: MagicString, previousReplace?: ReplaceResult): ReplaceResult
+export default function ifStatementProcessor (markup: string, ms: MagicString, { liquidContent }): ReplaceResult
 {
-  linesAdded = previousReplace?.linesAdded || 0;
+  const replaceOperations: ReplaceOperation[] = [];
+
   markup.replace(/\{%-*\s*if\s*(.*?)\s*-*%\}/gim, (a, exp, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
@@ -44,7 +21,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted if statement`
     });
@@ -63,7 +40,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted unless statement`
     });
@@ -82,7 +59,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted elsif statement`
     });
@@ -98,7 +75,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted else statement`
     });
@@ -116,7 +93,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted endif statement`
     });
@@ -136,7 +113,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted for loop`
     });
@@ -153,7 +130,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted endfor statement`
     });
@@ -171,7 +148,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted comment`
     });
@@ -188,7 +165,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
         lines: [line]
       },
       operation: {
-        lines: [line + linesAdded]
+        lines: [line]
       },
       explanation: `Converted end comment`
     });
@@ -199,7 +176,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, p
   const result: ReplaceResult = {
     magicString: ms,
     replaceOperations,
-    linesAdded
+    liquidContent
   };
 
   return result;

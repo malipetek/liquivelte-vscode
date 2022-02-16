@@ -2,38 +2,13 @@ import { uid } from 'uid';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import MagicString from 'magic-string';
+import getLineFromOffset from '../../../utils/get-line-from-offset';
+import createTagRegex from '../../../utils/create-tag-regex';
 
-let linesAdded = 0;
-const replaceOperations: ReplaceOperation[] = [];
-
-// function getLineFromOffset (lines: string[], offset: number) : number
-// {
-//   let lineCount = 0;
-//   let charCount = 0;
-//   while (charCount < offset) {
-//     lineCount++;
-//     const line = lines[lineCount];
-//     charCount += line.length + (line === '' ? 1 : 0);
-//   }
-//   return lineCount;
-// }
-
-function getLineFromOffset (str: string, offset: number): number | undefined
+export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule}): ReplaceResult
 {
-  let line = 0;
-  let pos = 0;
-  while (pos < offset) {
-    if (str[pos] === '\n') {
-      line++;
-    }
-    pos++;
-  }
-  return line + 1;
-}
-export default function themeImportProcessor (script: string, ms: MagicString, liquidImportsModule: string[], subImportsRegistryModule: SubImportRegistryModule, previousReplace: ReplaceResult): ReplaceResult
-{
-  linesAdded = previousReplace.linesAdded;
-
+  const replaceOperations: ReplaceOperation[] = [];
+  
   script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme['"]/gim, (a, obj, subObject, offset) =>
   {
     const line = getLineFromOffset(script, offset);
@@ -49,24 +24,28 @@ export default function themeImportProcessor (script: string, ms: MagicString, l
       };
 
       // TODO: selection lines are not matching source of problem might be here
-      subImportsRegistryModule.push(entry);
+      if (!subImportsRegistryModule.some(subImport => subImport.id === entry.id)) {
+        subImportsRegistryModule.push(entry);
+      }
       ms.overwrite(offset, offset + a.length, `export let ${obj}${subObject.replace(/\./gi, '$$')}; \n${obj}${subObject} = ${obj}${subObject.replace(/\./gi, '$$')}`);
       replaceOperations.push({
         was: {
           lines: [line]
         },
         operation: {
-          lines: [line + linesAdded, line + 1 + linesAdded]
+          lines: [line, line + 1]
         },
+        linesAdded: 1,
         explanation: `${obj}${subObject.replace(/\./gi, '$$')} will be imported as a top level prop. [var]$[var] syntax is for internal use.`
       });
-      linesAdded += 1;
       return '';
     } else {
       /* -------------------------------------------------------------------------- */
       /*         IMPORT FROM THEME IS SOMETHING LIKE product from 'theme'           */
       /* -------------------------------------------------------------------------- */
-      liquidImportsModule.push(obj);
+      if (!liquidImportsModule.some(liquidImport => liquidImport === obj)) {
+        liquidImportsModule.push(obj);
+      }
       ms.remove(offset, offset + 'import '.length);
       ms.appendLeft(offset, 'export let ');
       ms.remove(offset + ('import ' + obj).length, offset + ('import ' + obj).length + ' from \'theme\''.length);
@@ -75,7 +54,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, l
           lines: [line]
         },
         operation: {
-          lines: [line + linesAdded]
+          lines: [line]
         },
         explanation: `${obj} will be imported as a prop when initializing. Check the script tag in liquid built.`
       });
@@ -89,7 +68,6 @@ export default function themeImportProcessor (script: string, ms: MagicString, l
     subImportsRegistryModule,
     liquidImportsModule,
     replaceOperations,
-    linesAdded
   };
 
   return result;

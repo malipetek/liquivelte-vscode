@@ -1,39 +1,12 @@
 import type MagicString from 'magic-string';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
+import getLineFromOffset from '../../../utils/get-line-from-offset';
+import createTagRegex from '../../../utils/create-tag-regex';
 
-let linesAdded: number = 0;
-const replaceOperations: ReplaceOperation[] = [];
-
-function getLineFromOffset (str: string, offset: number): number
+export default function expressionProcessor (markup: string, ms: MagicString): ReplaceResult
 {
-  let line = 0;
-  let pos = 0;
-  while (pos < offset) {
-    if (str[pos] === '\n') {
-      line++;
-    }
-    pos++;
-  }
-  return line + 1;
-}
-
-function getLineOffsetFromTotalOffset (str: string, offset: number, line: number)
-{
-  let pos = 0;
-  let lineCount = 0;
-  while (lineCount < line) {
-    if (str[pos] === '\n') {
-      lineCount++;
-    }
-    pos++;
-  }
-  return pos;
-}
-
-export default function expressionProcessor (markup: string, ms: MagicString, previousReplace?: ReplaceResult): ReplaceResult
-{
-  linesAdded = previousReplace?.linesAdded || 0;
+  const replaceOperations: ReplaceOperation[] = [];
 
   markup.replace(/"?\{\{-\s*(.*?)\s*(\|.*?)?-\}\}"?/gim, (a, expression, filter, offset) =>
   {
@@ -48,7 +21,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, pr
             lines: [line]
           },
           operation: {
-            lines: [line + linesAdded]
+            lines: [line]
           },
           explanation: `converted html filter`
         });
@@ -56,6 +29,10 @@ export default function expressionProcessor (markup: string, ms: MagicString, pr
         return '';
       }
 
+      /*
+      * Convert expressions after pipe operator 
+      * example: {{- "{{name}}" | html -}}
+      */
       const exp = filter.match(/(\|\s*[^\|]+)(\:\s*[^\|]+)?/gi).map(filt =>
       {
         const filterReplaced = filt.replace(/\|\s*(\w+)\:?\s*([^\|]+)?/gi, '$1 $2');
@@ -72,7 +49,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, pr
           lines: [line]
         },
         operation: {
-          lines: [line + linesAdded]
+          lines: [line]
         },
         explanation: `Converted statement with filters, remember to include liquid.js`
       });
@@ -85,7 +62,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, pr
           lines: [line]
         },
         operation: {
-          lines: [line + linesAdded]
+          lines: [line]
         },
         explanation: `Converted statement`
       });
@@ -96,8 +73,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, pr
 
   const result: ReplaceResult = {
     magicString: ms,
-    replaceOperations,
-    linesAdded
+    replaceOperations
   };
 
   return result;

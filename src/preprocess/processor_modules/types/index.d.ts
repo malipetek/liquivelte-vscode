@@ -12,6 +12,7 @@ export type ReplaceResult = {
   magicString: MagicString;
   subImportsRegistryModule?: SubImportRegistryModule;
   liquidImportsModule?: string[];
+  rawIncludeRegistry?: any[];
   replaceOperations: ReplaceOperation[];
-  linesAdded: number;
+  liquidContent?: string;
 };

@@ -8,5 +8,6 @@ export type ReplaceOperation = {
   was: ReplaceRange;
   operation: ReplaceRange;
   explanation: string;
+  linesAdded?: number;
   active?: boolean;
 };

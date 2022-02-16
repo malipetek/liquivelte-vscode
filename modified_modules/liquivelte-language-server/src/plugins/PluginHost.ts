@@ -40,8 +40,11 @@ import {
     OnWatchFileChangesPara,
     Plugin
 } from './interfaces';
+import path from 'path';
+import fs from 'fs';
 
-enum ExecuteMode {
+enum ExecuteMode
+{
     None,
     FirstNonNull,
     Collect
@@ -70,8 +73,17 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
     }
 
     async getDiagnostics(textDocument: TextDocumentIdentifier): Promise<Diagnostic[]> {
-        const document = this.getDocument(textDocument.uri);
-
+        // let p = path.parse(textDocument.uri);
+        // let compiledDocumentPath = path.resolve(p.dir, '..', '.svelte', p.name + '.liquivelte');
+        // this.documentsManager.markAsOpenedInClient(compiledDocumentPath);
+        // let document = this.documentsManager.openDocument({
+        //     text: fs.readFileSync(compiledDocumentPath, 'utf8'),
+        //     uri: compiledDocumentPath
+        // });
+        
+        let document = this.getDocument(textDocument.uri);
+        document.setText();
+        
         if (
             (document.getFilePath()?.includes('/node_modules/') ||
                 document.getFilePath()?.includes('\\node_modules\\')) &&
@@ -85,6 +97,11 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
             // and in case of svelte-check they would pollute/skew the output
             return [];
         }
+
+        // const uri = vscode.Uri.parse('liquivelte:' + textDocument.uri);
+        // const vscodeDocument = await vscode.workspace.openTextDocument(uri);
+        // document.setText(vscodeDocument.getText());
+        // document = this.getDocument(vscodeDocument.uri.toString());
 
         return flatten(
             await this.execute<Diagnostic[]>(
