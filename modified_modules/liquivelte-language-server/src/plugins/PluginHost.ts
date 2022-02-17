@@ -40,8 +40,7 @@ import {
     OnWatchFileChangesPara,
     Plugin
 } from './interfaces';
-import path from 'path';
-import fs from 'fs';
+import liquivelteTransformer from './liquivelte-preprocessor/preprocess/preprocessor';
 
 enum ExecuteMode
 {
@@ -73,16 +72,9 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
     }
 
     async getDiagnostics(textDocument: TextDocumentIdentifier): Promise<Diagnostic[]> {
-        // let p = path.parse(textDocument.uri);
-        // let compiledDocumentPath = path.resolve(p.dir, '..', '.svelte', p.name + '.liquivelte');
-        // this.documentsManager.markAsOpenedInClient(compiledDocumentPath);
-        // let document = this.documentsManager.openDocument({
-        //     text: fs.readFileSync(compiledDocumentPath, 'utf8'),
-        //     uri: compiledDocumentPath
-        // });
-        
         let document = this.getDocument(textDocument.uri);
-        document.setText();
+        const { content, replaceOperations } = await liquivelteTransformer(document.getText(), textDocument.uri);
+        document.setText(content);
         
         if (
             (document.getFilePath()?.includes('/node_modules/') ||
