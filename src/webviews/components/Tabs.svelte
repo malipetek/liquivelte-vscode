@@ -1,12 +1,17 @@
 <script>
   let openTab = 1;
 </script>
-<div class="tab-buttons"> 
-  <div class="tab-button" class:active={openTab === 1} on:click={() => openTab = 1}><slot name="button1" /></div>
-  <div class="tab-button" class:active={openTab === 2} on:click={() => openTab = 2}><slot name="button2" /></div>
-  <div class="tab-button" class:active={openTab === 3} on:click={() => openTab = 3}><slot name="button3" /></div>
+<div class="tab-buttons-container">
+  <div class="tab-buttons">
+    <div class="tab-button" class:active={openTab === 1} on:click={() => openTab = 1}><slot name="button1" /></div>
+    <div class="tab-button" class:active={openTab === 2} on:click={() => openTab = 2}><slot name="button2" /></div>
+    <div class="tab-button" class:active={openTab === 3} on:click={() => openTab = 3}><slot name="button3" /></div>
+  </div>
+  <div class="under-buttons">
+    <slot name="under-buttons" />
+  </div>
 </div>
-<div>
+<div tab-content>
   {#if openTab == 1}
   <div >
     <slot name="tab1"></slot>
@@ -18,7 +23,7 @@
   </div>
   {/if}
   {#if openTab == 3}
-  <div>
+  <div >
     <slot name="tab3"></slot>
   </div>
   {/if}
@@ -41,5 +46,9 @@
   }
   .tab-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
+  }
+  [tab-content] {
+    height: 100%;
+    overflow-y: scroll;
   }
 </style>

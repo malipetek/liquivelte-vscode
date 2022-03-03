@@ -49,7 +49,7 @@ function updateDecorations (operations: ReplaceOperation[])
   });
 
   // editor.setDecorations(deco, decorations);
-  state['openEditor'].setDecorations(activeDeco, activeDecorations);
+  state['openPreview'].setDecorations(activeDeco, activeDecorations);
 }
 
 export function triggerUpdateDecorations (operations: ReplaceOperation[], activeOperations: ReplaceOperation[] = [])
@@ -58,8 +58,8 @@ export function triggerUpdateDecorations (operations: ReplaceOperation[], active
     clearTimeout(timeout);
     timeout = undefined;
   }
-  state['openEditor'].setDecorations(deco, []);
-  state['openEditor'].setDecorations(activeDeco, []);
+  state['openPreview'].setDecorations(deco, []);
+  state['openPreview'].setDecorations(activeDeco, []);
 
   timeout = setTimeout(() => updateDecorations(operations), 500);
 }

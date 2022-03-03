@@ -39,7 +39,7 @@ import { debounceThrottle, isNotNullOrUndefined, normalizeUri, urlToPath } from 
 import { FallbackWatcher } from './lib/FallbackWatcher';
 import { configLoader } from './lib/documents/configLoader';
 import { setIsTrusted } from './importPackage';
-
+import {transformSync} from './plugins/liquivelte/preprocess/preprocessor';
 namespace TagCloseRequest
 {
     export const type: RequestType<TextDocumentPositionParams, string | null, any> =
@@ -67,6 +67,8 @@ export interface LSOptions
  */
 export function startServer (options?: LSOptions)
 {
+    console.log('TS Starting server...');
+
     let connection = options?.connection;
     if (!connection) {
         if (process.argv.includes('--stdio')) {
@@ -292,6 +294,14 @@ export function startServer (options?: LSOptions)
 
     connection.onDidOpenTextDocument((evt) =>
     {
+        const liquivelteUri = evt.textDocument.uri.replace('file:', 'liquivelte:');
+        const { code, replaceOperations } = transformSync(evt.textDocument.text);
+        
+        if (!docManager.documents.has(liquivelteUri)) {
+            const document = docManager.openDocument({ uri: liquivelteUri, text: code });
+            document.replaceOperations = replaceOperations;
+            docManager.markAsOpenedInClient(liquivelteUri);
+        }
         docManager.openDocument(evt.textDocument);
         docManager.markAsOpenedInClient(evt.textDocument.uri);
     });

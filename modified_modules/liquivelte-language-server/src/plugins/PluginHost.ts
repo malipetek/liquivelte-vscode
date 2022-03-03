@@ -1,4 +1,5 @@
 import { flatten } from 'lodash';
+import { TextDocument } from 'vscode-html-languageservice';
 import {
     CancellationToken,
     CodeAction,
@@ -26,7 +27,8 @@ import {
     TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
     TextEdit,
-    WorkspaceEdit
+    WorkspaceEdit,
+
 } from 'vscode-languageserver';
 import { DocumentManager } from '../lib/documents';
 import { Logger } from '../logger';
@@ -40,7 +42,7 @@ import {
     OnWatchFileChangesPara,
     Plugin
 } from './interfaces';
-import liquivelteTransformer from './liquivelte-preprocessor/preprocess/preprocessor';
+import liquivelteTransformer from './liquivelte/preprocess/preprocessor';
 
 enum ExecuteMode
 {
@@ -71,11 +73,11 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
         this.deferredRequests = {};
     }
 
-    async getDiagnostics(textDocument: TextDocumentIdentifier): Promise<Diagnostic[]> {
-        let document = this.getDocument(textDocument.uri);
-        const { content, replaceOperations } = await liquivelteTransformer(document.getText(), textDocument.uri);
-        document.setText(content);
-        
+    async getDiagnostics (textDocument: TextDocumentIdentifier): Promise<Diagnostic[]>
+    {
+        const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
+        let document = this.getDocument(liquivelteUri);
+
         if (
             (document.getFilePath()?.includes('/node_modules/') ||
                 document.getFilePath()?.includes('\\node_modules\\')) &&
@@ -106,7 +108,7 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
     }
 
     async doHover(textDocument: TextDocumentIdentifier, position: Position): Promise<Hover | null> {
-        const document = this.getDocument(textDocument.uri);
+        let document = this.getDocument(textDocument.uri);
 
         return this.execute<Hover>(
             'doHover',
@@ -255,6 +257,12 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
         position: Position
     ): Promise<DefinitionLink[] | Location[]> {
         const document = this.getDocument(textDocument.uri);
+
+        // const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
+        // let document = this.getDocument(liquivelteUri);
+        // // @ts-ignore
+        // const lineAdditionsBefore = replaceOperations.filter(op => op.was.lines[0] < position.line && op.linesAdded).reduce((acc, op) => acc + op.linesAdded, 0);
+        // position.line = position.line + lineAdditionsBefore;
 
         const definitions = flatten(
             await this.execute<DefinitionLink[]>(

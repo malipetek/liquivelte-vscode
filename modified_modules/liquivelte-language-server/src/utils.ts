@@ -22,9 +22,9 @@ export function clamp(num: number, min: number, max: number): number {
 
 export function urlToPath(stringUrl: string): string | null {
     const url = URI.parse(stringUrl);
-    if (url.scheme !== 'file') {
-        return null;
-    }
+    // if (url.scheme !== 'file') {
+    //     return null;
+    // }
     return url.fsPath.replace(/\\/g, '/');
 }
 
@@ -57,7 +57,9 @@ export function getLastPartOfPath(path: string): string {
     return path.replace(/\\/g, '/').split('/').pop() || '';
 }
 
-export function flatten<T>(arr: Array<T | T[]>): T[] {
+export function flatten<T> (arr: Array<T | T[]>): T[]
+{
+    // @ts-ignore
     return arr.reduce(
         (all: T[], item) => (Array.isArray(item) ? [...all, ...item] : [...all, item]),
         []

@@ -4,9 +4,8 @@ import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryMod
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function expressionProcessor (markup: string, ms: MagicString): ReplaceResult
+export default function expressionProcessor (markup: string, ms: MagicString, { replaceOperations }): ReplaceResult
 {
-  const replaceOperations: ReplaceOperation[] = [];
 
   markup.replace(/"?\{\{-\s*(.*?)\s*(\|.*?)?-\}\}"?/gim, (a, expression, filter, offset) =>
   {

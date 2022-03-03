@@ -1,6 +1,7 @@
 <script>
   import { slide } from 'svelte/transition';
   export let open = false; 
+  export let indent = true; 
 </script>
 
 <div on:click={() => open = !open } class:open={open} class="opener-container" >
@@ -9,7 +10,7 @@
 </div>
 
 {#if open}
-  <div transition:slide>
+  <div class:indent class="expanding-content" transition:slide>
     <slot />
   </div>
 {/if}
@@ -17,13 +18,23 @@
 <style>
   .opener-container {
     position: relative;
-    display: flex;
+    display: inline-flex;
+    justify-content: flex-start;
     align-items: center;
     cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .opener-container > *{
+    flex: 1 1 auto;
   }
   .arrow {
+    flex: 0 0 2em;
     width: 2em;
-    margin-right: 1em;
+    margin-right: 0em;
     color: var(--vscode-foreground);
     fill: currentColor;
     transform: rotate(-90deg);
@@ -31,5 +42,9 @@
   }
   .open .arrow {
     transform: rotate(0deg);
+  }
+
+  .indent {
+    padding-left: .6em;
   }
 </style>

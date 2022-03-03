@@ -83,7 +83,8 @@ export function ensureRealSvelteFilePath(filePath: string) {
 export function convertRange(
     document: { positionAt: (offset: number) => Position },
     range: { start?: number; length?: number }
-): Range {
+): Range
+{
     return Range.create(
         document.positionAt(range.start || 0),
         document.positionAt((range.start || 0) + (range.length || 0))

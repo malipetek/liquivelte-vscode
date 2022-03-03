@@ -5,10 +5,8 @@ import MagicString from 'magic-string';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule}): ReplaceResult
-{
-  const replaceOperations: ReplaceOperation[] = [];
-  
+export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[]}): ReplaceResult
+{  
   script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme['"]/gim, (a, obj, subObject, offset) =>
   {
     const line = getLineFromOffset(script, offset);
@@ -23,7 +21,6 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
         importStatement: `${obj}${subObject}`
       };
 
-      // TODO: selection lines are not matching source of problem might be here
       if (!subImportsRegistryModule.some(subImport => subImport.id === entry.id)) {
         subImportsRegistryModule.push(entry);
       }

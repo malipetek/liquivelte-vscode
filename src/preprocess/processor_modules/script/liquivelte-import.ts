@@ -6,12 +6,12 @@ import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 import { stripArrowFunctions, putBackArrowFunctions } from '../../../utils/arrow-function-props';
 import toKebabCase from "../../../utils/to-kebab-case";
+import getNamedSlots from '../../../utils/get-named-slots';
 import parseProps from '../../../utils/parse-props';
 import path from 'path';
 
-export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [] }): ReplaceResult
+export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, replaceOperations }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [], replaceOperations: any[] }): ReplaceResult
 {
-  const replaceOperations: ReplaceOperation[] = [];
 
   let modules = [];
   script.replace(/import\s+(.+)\s+from\s+['"](.+)\.liquivelte['"]/gi, (a, module, filename, offset) =>
@@ -73,6 +73,7 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
           propsParsed = { ...propsParsed, ...spreadProps };
         }
       }
+      const { remainingContent, slotContents } = getNamedSlots(children);
       return `
 {% comment %}
 kvsp stands for "key value separator"
@@ -81,9 +82,14 @@ prsp stands for "props separator"
 {% comment %}
 scs stands for "slot component separator"
 scvs stands for "slot component value separator"
+smns stands for "slot module name separator"
 {% endcomment %}
 {% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
-{% capture slot_content_${module} %}${children}{% endcapture %}
+${slotContents.reduce((c, slotEntry) => `${c}
+{% capture slot_content_${module}_${slotEntry.name} %}${slotEntry.content}{% endcapture %}
+{% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
+`, '')}
+{% capture slot_content_${module} %}${remainingContent}{% endcapture %}
 {% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_${module} %}
 
 {% include 'svelte', module: '${filename}', props: props, sub_include: true %}

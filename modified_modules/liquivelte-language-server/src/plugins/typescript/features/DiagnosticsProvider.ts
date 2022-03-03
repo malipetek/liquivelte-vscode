@@ -68,6 +68,7 @@ export class DiagnosticsProviderImpl implements DiagnosticsProvider {
         diagnostics = diagnostics
             .filter(isNotGenerated(tsDoc.getText(0, tsDoc.getLength())))
             .filter(not(isUnusedReactiveStatementLabel));
+        // @ts-ignore
         diagnostics = resolveNoopsInReactiveStatements(lang, diagnostics);
 
         return diagnostics

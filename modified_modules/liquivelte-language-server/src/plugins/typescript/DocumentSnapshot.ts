@@ -20,7 +20,7 @@ import {
     isSvelteFilePath,
     getTsCheckComment
 } from './utils';
-
+import liquivelteTransformer from '../liquivelte/preprocess/preprocessor';
 /**
  * An error which occured while trying to parse/preprocess the svelte file contents.
  */

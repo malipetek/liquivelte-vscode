@@ -6,6 +6,7 @@ import {
 } from 'vscode-languageserver';
 import { Document } from './Document';
 import { normalizeUri } from '../../utils';
+import { transformSync } from '../../plugins/liquivelte/preprocess/preprocessor';
 
 export type DocumentEvent = 'documentOpen' | 'documentChange' | 'documentClose';
 
@@ -24,7 +25,7 @@ export class DocumentManager {
     ) {}
 
     openDocument(textDocument: Pick<TextDocumentItem, 'text' | 'uri'>): Document {
-        textDocument = { ...textDocument, uri: normalizeUri(textDocument.uri) };
+        // textDocument = { ...textDocument, uri: normalizeUri(textDocument.uri) };
 
         let document: Document;
         if (this.documents.has(textDocument.uri)) {
@@ -107,7 +108,18 @@ export class DocumentManager {
 
             document.update(change.text, start, end);
         }
-
+        let liquivelteDocument = this.documents.get(textDocument.uri.replace('file:', 'liquivelte:'));
+        if (liquivelteDocument) {
+            // let content = liquivelteDocument.getText();
+            let {code: newContent, replaceOperations } = transformSync(document.content);
+            // get text difference
+            // let diff = JsDiff.diffChars(content, newContent);
+            liquivelteDocument.update(newContent, 0, liquivelteDocument.content.length);
+            liquivelteDocument.replaceOperations = replaceOperations;
+        
+            this.notify('documentChange', liquivelteDocument);
+        }
+        
         this.notify('documentChange', document);
     }
 
@@ -116,7 +128,8 @@ export class DocumentManager {
     }
 
     get(uri: string) {
-        return this.documents.get(normalizeUri(uri));
+        // return this.documents.get(normalizeUri(uri));
+        return this.documents.get(uri);
     }
 
     private notify(name: DocumentEvent, document: Document) {

@@ -15,6 +15,11 @@ export class HoverProviderImpl implements HoverProvider {
         const { lang, tsDoc } = await this.getLSAndTSDoc(document);
         const fragment = await tsDoc.getFragment();
 
+        if (document.replaceOperations) {
+                // @ts-ignore
+                const lineAdditionsBefore = document.replaceOperations.filter(op => op.was.lines[0] < position.line && op.linesAdded).reduce((acc, op) => acc + op.linesAdded, 0);
+                position.line -= lineAdditionsBefore;
+        }
         const eventHoverInfo = await this.getEventHoverInfo(lang, document, tsDoc, position);
         if (eventHoverInfo) {
             return eventHoverInfo;

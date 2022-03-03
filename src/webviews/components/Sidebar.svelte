@@ -3,21 +3,45 @@
   import Tabs from "./Tabs.svelte";
   import Expandable from "./Expandable.svelte";
   import Switch from "./Switch.svelte";
+  import Filelink from "./Filelink.svelte";
+  import JSONTree from 'svelte-json-tree';
+  import Schema from "./schema/Schema.svelte";
+  import { slide } from 'svelte/transition';
 
   import { onMount } from "svelte";
+  import { setContext } from 'svelte';
+  import { 
+    schema, 
+    schemaFromFile, 
+    sectionTranslations, 
+    sectionTranslationsFromFile, 
+    schemaChanges,
+    hasSchema
+  } from './store.js';
+
   export let vscode;
   export const isDarkTheme = true;
 
+  setContext('vscode', vscode);
+
   let loading = true;
   let stats = {};
+  let currentFile = '';
   let state = {
     infoOpen: false,
   };
+  let translations = {};
   let build_config = {
     is_ts: false,
     is_scss: false,
     minify: false,
   };
+  let build_warnings = [];
+  let build_errors = [];
+
+  let schema_error;
+  $: console.log('schemaChanges ', $schemaChanges);
+
   let page = vscode.getState()?.page || "todos";
 
   $: {
@@ -28,6 +52,10 @@
     vscode.postMessage({ type: "get-stats", value: undefined });
   }
 
+  function getTranslations() {
+    vscode.postMessage({ type: "get-translations", value: undefined });
+  }
+
   function startWatch() {
     vscode.postMessage({ type: "start-watch", value: undefined });
   }
@@ -36,13 +64,27 @@
     vscode.postMessage({ type: "create-folder", value: undefined });
   }
 
+  function saveSchema() {
+    vscode.postMessage({ type: "save-schema", file: currentFile, schema: $schema });
+    schemaFromFile.set(JSON.parse(JSON.stringify($schema)));
+    saveTranslations();
+  }
+
+  function saveTranslations() {
+    vscode.postMessage({ type: "save-translations", sectionTranslations: $sectionTranslations });
+    sectionTranslationsFromFile.set(JSON.parse(JSON.stringify($sectionTranslations)));
+  }
   onMount(async () => {
     window.addEventListener("message", async (event) => {
-      console.log("webview message ", event.data.stats);
+      console.log("webview message ", event.data);
       const message = event.data;
       switch (message.type) {
         case "stats":
           stats = message.stats;
+          loading = false;
+          break;
+        case "active-file-changed":
+          currentFile = message.data;
           loading = false;
           break;
         case "building-state":
@@ -57,11 +99,34 @@
             },
           };
           // templates[message.state.template] = message.state.loading;
-          console.log("building state webview", message);
+          break;
+          case 'translations': {
+            // translations = message.translations;
+            sectionTranslations.set(message.sectionTranslations);
+            sectionTranslationsFromFile.set(JSON.parse(JSON.stringify(message.sectionTranslations)));
+          }
+          case 'build-warnings':
+            build_warnings = message.data;
+          break;
+          case 'schema-changed':
+            if(message.data) {
+              schema.set({...message.data});
+              schemaFromFile.set(JSON.parse(JSON.stringify(message.data)));
+              hasSchema.set(true);
+            } else {
+              // no schema on this file
+              hasSchema.set(false);
+              schema.set({});
+              schemaFromFile.set({});
+            }
+          break;
+          case 'schema-error':
+            schema_error = message.data;  
           break;
       }
     });
     checkFolders();
+    getTranslations();
   });
 
   $: buildLoading =
@@ -76,7 +141,7 @@
   <header>
     <div class="flex between vertical-center w-100">
       <div class="">
-        <h1>Liquivelte Extension</h1>
+        <h1>Liquivelte </h1>
       </div>
       <div class="right">
         <svg
@@ -121,25 +186,44 @@
       </a>
     </span>
     <span slot="button2">
-      <a href="#">
+      <a href="#" class="relative">
         <svg class="icon" viewBox="0 0 24 24"
           ><path
             d="M13 9V3.5L18.5 9M6 2c-1.11 0-2 .89-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z"
           /></svg
         >
         File
+        {#if $schemaChanges }
+        <div class="badge"> &nbsp;&nbsp;&nbsp;&nbsp; </div>
+        {/if}
       </a>
     </span>
     <span slot="button3">
-      <a href="#">
+      <a href="#" class="relative">
         <svg class="icon" viewBox="0 0 24 24"
           ><path
             d="M14 12h-4v-2h4m0 6h-4v-2h4m6-6h-2.81a5.985 5.985 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6.002 6.002 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8z"
           /></svg
         >
         Issues
+          {#if (build_warnings && build_warnings.length > 0) || (build_errors && build_errors.length > 0)}
+            <div class="badge">
+              {build_warnings.length + build_errors.length}
+            </div>
+          {/if}
       </a>
     </span>
+    <div slot="under-buttons">
+      {#if $schemaChanges}
+      <div class="schema-changes" transition:slide >
+        <p> Schema or translation changes are made </p>
+        <div class="schema-changes-actions">
+          <button on:click={saveSchema}> Save </button>
+          <button secondary> Discard </button>
+        </div>
+      </div>
+    {/if}
+    </div>
     <span slot="tab1">
       {#if loading}
         <progress class="progress" />
@@ -156,7 +240,9 @@
                       d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2m-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
                     /></svg
                   >
-                  <b>Theme</b> folder found.
+                  <Filelink folder={true} href={stats.themeFolder}>
+                    <b>Theme</b>
+                  </Filelink> folder found.
                 </div>
               {:else}
                 <div>
@@ -318,7 +404,7 @@
                         d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"
                       /></svg
                     >
-                    {template}
+                    <Filelink href="{stats.themeFolder}/templates/{template}"> {template} </Filelink>
                     {#if stats.templates[template].includes.length}
                       {#if stats.templates[template].loading}
                         <div class="spinner" />
@@ -463,381 +549,285 @@
                 label="Minify"
                 design="inner"
               >
-                <span slot="on">
-                  <svg
-                    class="build-icon"
-                    viewBox="0 -177.5 512 512"
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    preserveAspectRatio="xMidYMid"
-                  >
-                    <g>
-                      <rect
-                        fill="#FF6B00"
-                        x="7.96444444"
-                        y="0"
-                        width="26.7377778"
-                        height="58.0266667"
-                      />
-                      <path
-                        d="M7.96444444,84.7644444 L7.96444444,128.568889 C7.96444444,148.48 23.3244444,155.875556 34.7022222,155.875556 L47.7866667,155.875556 L47.7866667,128.568889 L34.7022222,128.568889 L34.7022222,84.7644444 L7.96444444,84.7644444 Z"
-                        fill="#FF6B00"
-                      />
-                      <polygon
-                        fill="#05CE7C"
-                        points="0 58.0266667 10.3621788 58.0266667 10.3621788 84.7644444 0 84.7644444"
-                      />
-                      <polygon
-                        fill="#05CE7C"
-                        points="33.1174392 58.0266667 47.7866667 58.0266667 47.7866667 84.7644444 33.1174392 84.7644444"
-                      />
-                      <rect
-                        fill="#055600"
-                        x="7.96444444"
-                        y="58.0266667"
-                        width="26.7377778"
-                        height="26.7377778"
-                      />
-                      <path
-                        d="M133.12,111.502222 L160.426667,100.124444 C156.728889,91.3635556 153.031111,83.0577778 149.617778,78.5066667 L122.88,89.8844444 L133.12,111.502222 Z"
-                        fill="#DA1800"
-                      />
-                      <path
-                        d="M98.9866667,125.155556 L89.3155556,103.537778 L61.44,114.915556 C63.5448889,123.619556 67.1288889,131.527111 71.68,137.102222 L98.9866667,125.155556 Z"
-                        fill="#DA1800"
-                      />
-                      <path
-                        d="M122.88,89.8844444 L149.617778,78.5066667 C120.604444,37.5466667 54.6133333,61.44 61.44,114.915556 L89.3155556,103.537778 C91.9324444,86.0728889 110.364444,79.3031111 122.88,89.8844444 Z"
-                        fill="#FF6B00"
-                      />
-                      <path
-                        d="M89.3155556,103.537778 C88.9460022,107.997055 89.3553229,111.741476 90.5250351,114.946624 C92.0562978,119.142462 94.8906631,122.414136 98.9866667,125.155556 L133.12,111.502222 C131.356444,103.082667 128.625778,95.8577778 122.88,89.8844444 L89.3155556,103.537778 Z"
-                        fill="#DA3AB3"
-                      />
-                      <path
-                        d="M71.68,137.102222 C91.8186667,161.962667 127.431111,161.564444 150.186667,140.515556 L133.12,119.466667 C124.586667,129.137778 106.951111,130.844444 98.9866667,125.155556"
-                        fill="#FF6B00"
-                      />
-                      <polygon
-                        fill="#DA3AB3"
-                        points="200.817778 59.1644444 200.817778 58.0266667 174.08 58.0266667 174.08 92.16"
-                      />
-                      <path
-                        d="M200.817778,59.1644444 L198.706298,62.2387044 L199.404653,91.1771571 L200.817778,92.16 C203.491556,84.5368889 211.285333,82.432 216.746667,87.6088889 L236.088889,68.2666667 C225.393778,58.1404444 212.252444,55.9786667 200.817778,59.1644444 Z"
-                        fill="#00B3E3"
-                      />
-                      <path
-                        d="M200.817778,59.1644444 C186.766222,63.0897778 175.331556,75.3777778 174.08,92.16 L174.08,155.875556 L200.817778,155.875556 L200.817778,59.1644444 Z"
-                        fill="#00299F"
-                      />
-                      <path
-                        d="M315.733333,58.0266667 L273.066667,58.0266667 C234.837333,64.9102222 238.535111,119.239111 277.048889,120.035556 L293.546667,120.035556 C299.349333,120.035556 299.349333,129.137778 293.546667,129.137778 L254.862222,129.137778 L254.862222,155.875556 L293.546667,155.875556 C314.254222,153.827556 324.039111,140.686222 324.266667,125.724444 C324.494222,109.397333 312.718222,93.2977778 292.977778,93.2977778 L275.911111,93.2977778 C272.156444,91.9893333 272.156444,86.2435556 275.911111,84.7644444 L315.733333,84.7644444 L315.733333,58.0266667 Z"
-                        fill="#FF4338"
-                      />
-                      <path
-                        d="M409.031111,111.502222 L436.337778,100.124444 C432.64,91.3635556 428.942222,83.0577778 425.528889,78.5066667 L398.791111,89.8844444 L409.031111,111.502222 Z"
-                        fill="#DA1800"
-                      />
-                      <path
-                        d="M374.897778,125.155556 L365.226667,103.537778 L337.351111,114.915556 C339.456,123.619556 343.04,131.527111 347.591111,137.102222 L374.897778,125.155556 Z"
-                        fill="#DA1800"
-                      />
-                      <path
-                        d="M398.791111,89.8844444 L425.528889,78.5066667 C396.515556,37.5466667 330.524444,61.44 337.351111,114.915556 L365.226667,103.537778 C367.843556,86.0728889 386.275556,79.3031111 398.791111,89.8844444 Z"
-                        fill="#FF6B00"
-                      />
-                      <path
-                        d="M365.226667,103.537778 C364.373333,113.834667 367.672889,120.32 374.897778,125.155556 L409.031111,111.502222 C407.267556,103.082667 404.536889,95.8577778 398.791111,89.8844444 L365.226667,103.537778 Z"
-                        fill="#DA3AB3"
-                      />
-                      <path
-                        d="M347.591111,137.102222 C367.729778,161.962667 403.342222,161.564444 426.097778,140.515556 L409.031111,119.466667 C400.497778,129.137778 382.862222,130.844444 374.897778,125.155556"
-                        fill="#FF6B00"
-                      />
-                      <polygon
-                        fill="#DA3AB3"
-                        points="476.728889 59.1644444 476.728889 58.0266667 449.991111 58.0266667 449.991111 92.16"
-                      />
-                      <path
-                        d="M476.728889,59.1644444 L476.024353,60.500593 L476.024353,91.252704 L476.728889,92.16 C479.402667,84.5368889 487.196444,82.432 492.657778,87.6088889 L512,68.2666667 C501.304889,58.1404444 488.163556,55.9786667 476.728889,59.1644444 Z"
-                        fill="#00B3E3"
-                      />
-                      <path
-                        d="M476.728889,59.1644444 C462.677333,63.0897778 451.242667,75.3777778 449.991111,92.16 L449.991111,155.875556 L476.728889,155.875556 L476.728889,59.1644444 Z"
-                        fill="#00299F"
-                      />
-                    </g>
-                  </svg>
+                <span slot="on" >
+                  <div title="minified">
+                    <svg class="build-icon" 
+                      style="enable-background:new 0 0 512 512" version="1.1" viewBox="0 0 512 512" xml:space="preserve" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="64" width="384" height="512"/>
+                      <path d="m441 505.03h-370v-498.06h370zm-366-4h362v-490.06h-362z" style="fill:#5b5c5f"/><rect x="346.17" y="59.7" width="69.152" height="12" style="fill:#6b6b6b"/><rect x="117.7" y="59.4" width="103.72" height="12" style="fill:#c1c1c1"/><rect x="240.96" y="59.233" width="34.576" height="12" style="fill:#c1c1c1"/><rect x="100.42" y="93.976" width="103.7" height="12" style="fill:#6b6b6b"/><rect x="293.15" y="60.088" width="34.584" height="12" style="fill:#fff"/><rect x="329.15" y="94.088" width="34.584" height="12" style="fill:#fff"/><rect x="380.96" y="93.233" width="34.576" height="12" style="fill:#c1c1c1"/><rect x="101.15" y="128.09" width="34.584" height="12" style="fill:#fff"/><rect x="148.94" y="127.52" width="103.72" height="12" style="fill:#c1c1c1"/><rect x="213.15" y="94.088" width="34.584" height="12" style="fill:#fff"/><rect x="265.15" y="94.088" width="34.584" height="12" style="fill:#6b6b6b"/><rect x="265.15" y="128.09" width="34.584" height="12" style="fill:#fff"/>
+                    </svg>  
+                  </div>
                 </span>
-                <span slot="off">
-                  <svg
-                    class="build-icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
-                    viewBox="0 0 512 512"
-                    style="enable-background:new 0 0 512 512;"
-                    xml:space="preserve"
-                  >
-                    <rect x="64" width="384" height="512" />
-                    <path
-                      style="fill:#5B5C5F;"
-                      d="M441,505.032H71V6.976h370V505.032z M75,501.032h362V10.976H75V501.032z"
-                    />
-                    <rect
-                      x="255.984"
-                      y="232.24"
-                      style="fill:#FFFFFF;"
-                      width="51.864"
-                      height="12"
-                    />
-                    <g>
+                <span slot="off" >
+                  <div 
+                  title="non minified">
+                    <svg 
+                      class="build-icon"
+                      viewBox="0 0 512 512"
+                      style="enable-background:new 0 0 512 512;"
+                      xml:space="preserve"
+                      >
+                      <rect x="64" width="384" height="512" />
+                      <path
+                        style="fill:#5B5C5F;"
+                        d="M441,505.032H71V6.976h370V505.032z M75,501.032h362V10.976H75V501.032z"
+                      />
                       <rect
-                        x="134.984"
+                        x="255.984"
                         y="232.24"
-                        style="fill:#C1C1C1;"
-                        width="69.144"
+                        style="fill:#FFFFFF;"
+                        width="51.864"
                         height="12"
                       />
+                      <g>
+                        <rect
+                          x="134.984"
+                          y="232.24"
+                          style="fill:#C1C1C1;"
+                          width="69.144"
+                          height="12"
+                        />
+                        <rect
+                          x="134.984"
+                          y="163.12"
+                          style="fill:#C1C1C1;"
+                          width="69.144"
+                          height="12"
+                        />
+                      </g>
                       <rect
-                        x="134.984"
+                        x="238.712"
                         y="163.12"
-                        style="fill:#C1C1C1;"
-                        width="69.144"
-                        height="12"
-                      />
-                    </g>
-                    <rect
-                      x="238.712"
-                      y="163.12"
-                      style="fill:#6B6B6B;"
-                      width="69.152"
-                      height="12"
-                    />
-                    <g>
-                      <rect
-                        x="325.152"
-                        y="163.12"
-                        style="fill:#C1C1C1;"
+                        style="fill:#6B6B6B;"
                         width="69.152"
                         height="12"
                       />
-                      <rect
-                        x="377.04"
-                        y="197.696"
-                        style="fill:#C1C1C1;"
-                        width="34.568"
-                        height="12"
-                      />
+                      <g>
+                        <rect
+                          x="325.152"
+                          y="163.12"
+                          style="fill:#C1C1C1;"
+                          width="69.152"
+                          height="12"
+                        />
+                        <rect
+                          x="377.04"
+                          y="197.696"
+                          style="fill:#C1C1C1;"
+                          width="34.568"
+                          height="12"
+                        />
+                        <rect
+                          x="290.56"
+                          y="197.696"
+                          style="fill:#C1C1C1;"
+                          width="34.576"
+                          height="12"
+                        />
+                      </g>
+                      <g>
+                        <rect
+                          x="154.576"
+                          y="197.696"
+                          style="fill:#FFFFFF;"
+                          width="65"
+                          height="12"
+                        />
+                        <rect
+                          x="377.04"
+                          y="128.56"
+                          style="fill:#FFFFFF;"
+                          width="34.568"
+                          height="12"
+                        />
+                      </g>
                       <rect
                         x="290.56"
-                        y="197.696"
+                        y="128.56"
                         style="fill:#C1C1C1;"
                         width="34.576"
                         height="12"
                       />
-                    </g>
-                    <g>
                       <rect
-                        x="154.576"
-                        y="197.696"
-                        style="fill:#FFFFFF;"
-                        width="65"
-                        height="12"
-                      />
-                      <rect
-                        x="377.04"
+                        x="134.984"
                         y="128.56"
                         style="fill:#FFFFFF;"
-                        width="34.568"
-                        height="12"
-                      />
-                    </g>
-                    <rect
-                      x="290.56"
-                      y="128.56"
-                      style="fill:#C1C1C1;"
-                      width="34.576"
-                      height="12"
-                    />
-                    <rect
-                      x="134.984"
-                      y="128.56"
-                      style="fill:#FFFFFF;"
-                      width="103.72"
-                      height="12"
-                    />
-                    <rect
-                      x="325.152"
-                      y="59.4"
-                      style="fill:#6B6B6B;"
-                      width="86.432"
-                      height="12"
-                    />
-                    <rect
-                      x="255.984"
-                      y="59.4"
-                      style="fill:#FFFFFF;"
-                      width="34.584"
-                      height="12"
-                    />
-                    <g>
-                      <rect
-                        x="117.696"
-                        y="59.4"
-                        style="fill:#C1C1C1;"
                         width="103.72"
                         height="12"
                       />
-                      <rect
-                        x="342.432"
-                        y="93.976"
-                        style="fill:#C1C1C1;"
-                        width="69.152"
-                        height="12"
-                      />
-                      <rect
-                        x="273.28"
-                        y="93.976"
-                        style="fill:#C1C1C1;"
-                        width="34.576"
-                        height="12"
-                      />
-                    </g>
-                    <rect
-                      x="100.424"
-                      y="93.976"
-                      style="fill:#6B6B6B;"
-                      width="103.704"
-                      height="12"
-                    />
-                    <rect
-                      x="255.984"
-                      y="440.64"
-                      style="fill:#FFFFFF;"
-                      width="51.864"
-                      height="12"
-                    />
-                    <g>
-                      <rect
-                        x="134.984"
-                        y="440.64"
-                        style="fill:#C1C1C1;"
-                        width="69.144"
-                        height="12"
-                      />
-                      <rect
-                        x="134.984"
-                        y="371.44"
-                        style="fill:#C1C1C1;"
-                        width="69.144"
-                        height="12"
-                      />
-                    </g>
-                    <rect
-                      x="238.712"
-                      y="371.44"
-                      style="fill:#6B6B6B;"
-                      width="69.152"
-                      height="12"
-                    />
-                    <g>
                       <rect
                         x="325.152"
+                        y="59.4"
+                        style="fill:#6B6B6B;"
+                        width="86.432"
+                        height="12"
+                      />
+                      <rect
+                        x="255.984"
+                        y="59.4"
+                        style="fill:#FFFFFF;"
+                        width="34.584"
+                        height="12"
+                      />
+                      <g>
+                        <rect
+                          x="117.696"
+                          y="59.4"
+                          style="fill:#C1C1C1;"
+                          width="103.72"
+                          height="12"
+                        />
+                        <rect
+                          x="342.432"
+                          y="93.976"
+                          style="fill:#C1C1C1;"
+                          width="69.152"
+                          height="12"
+                        />
+                        <rect
+                          x="273.28"
+                          y="93.976"
+                          style="fill:#C1C1C1;"
+                          width="34.576"
+                          height="12"
+                        />
+                      </g>
+                      <rect
+                        x="100.424"
+                        y="93.976"
+                        style="fill:#6B6B6B;"
+                        width="103.704"
+                        height="12"
+                      />
+                      <rect
+                        x="255.984"
+                        y="440.64"
+                        style="fill:#FFFFFF;"
+                        width="51.864"
+                        height="12"
+                      />
+                      <g>
+                        <rect
+                          x="134.984"
+                          y="440.64"
+                          style="fill:#C1C1C1;"
+                          width="69.144"
+                          height="12"
+                        />
+                        <rect
+                          x="134.984"
+                          y="371.44"
+                          style="fill:#C1C1C1;"
+                          width="69.144"
+                          height="12"
+                        />
+                      </g>
+                      <rect
+                        x="238.712"
                         y="371.44"
-                        style="fill:#C1C1C1;"
+                        style="fill:#6B6B6B;"
                         width="69.152"
                         height="12"
                       />
-                      <rect
-                        x="377.04"
-                        y="406.024"
-                        style="fill:#C1C1C1;"
-                        width="34.568"
-                        height="12"
-                      />
+                      <g>
+                        <rect
+                          x="325.152"
+                          y="371.44"
+                          style="fill:#C1C1C1;"
+                          width="69.152"
+                          height="12"
+                        />
+                        <rect
+                          x="377.04"
+                          y="406.024"
+                          style="fill:#C1C1C1;"
+                          width="34.568"
+                          height="12"
+                        />
+                        <rect
+                          x="290.56"
+                          y="406.024"
+                          style="fill:#C1C1C1;"
+                          width="34.576"
+                          height="12"
+                        />
+                      </g>
+                      <g>
+                        <rect
+                          x="154.576"
+                          y="406.024"
+                          style="fill:#FFFFFF;"
+                          width="65"
+                          height="12"
+                        />
+                        <rect
+                          x="377.04"
+                          y="336.88"
+                          style="fill:#FFFFFF;"
+                          width="34.568"
+                          height="12"
+                        />
+                      </g>
                       <rect
                         x="290.56"
-                        y="406.024"
+                        y="336.88"
                         style="fill:#C1C1C1;"
                         width="34.576"
                         height="12"
                       />
-                    </g>
-                    <g>
                       <rect
-                        x="154.576"
-                        y="406.024"
-                        style="fill:#FFFFFF;"
-                        width="65"
-                        height="12"
-                      />
-                      <rect
-                        x="377.04"
+                        x="134.984"
                         y="336.88"
                         style="fill:#FFFFFF;"
-                        width="34.568"
-                        height="12"
-                      />
-                    </g>
-                    <rect
-                      x="290.56"
-                      y="336.88"
-                      style="fill:#C1C1C1;"
-                      width="34.576"
-                      height="12"
-                    />
-                    <rect
-                      x="134.984"
-                      y="336.88"
-                      style="fill:#FFFFFF;"
-                      width="103.72"
-                      height="12"
-                    />
-                    <rect
-                      x="325.152"
-                      y="267.736"
-                      style="fill:#6B6B6B;"
-                      width="86.432"
-                      height="12"
-                    />
-                    <rect
-                      x="255.984"
-                      y="267.736"
-                      style="fill:#FFFFFF;"
-                      width="34.584"
-                      height="12"
-                    />
-                    <g>
-                      <rect
-                        x="117.696"
-                        y="267.736"
-                        style="fill:#C1C1C1;"
                         width="103.72"
                         height="12"
                       />
                       <rect
-                        x="342.432"
-                        y="302.304"
-                        style="fill:#C1C1C1;"
-                        width="69.152"
+                        x="325.152"
+                        y="267.736"
+                        style="fill:#6B6B6B;"
+                        width="86.432"
                         height="12"
                       />
                       <rect
-                        x="273.28"
-                        y="302.304"
-                        style="fill:#C1C1C1;"
-                        width="34.576"
+                        x="255.984"
+                        y="267.736"
+                        style="fill:#FFFFFF;"
+                        width="34.584"
                         height="12"
                       />
-                    </g>
-                    <rect
-                      x="100.424"
-                      y="302.304"
-                      style="fill:#6B6B6B;"
-                      width="103.704"
-                      height="12"
-                    />
-                  </svg>
+                      <g>
+                        <rect
+                          x="117.696"
+                          y="267.736"
+                          style="fill:#C1C1C1;"
+                          width="103.72"
+                          height="12"
+                        />
+                        <rect
+                          x="342.432"
+                          y="302.304"
+                          style="fill:#C1C1C1;"
+                          width="69.152"
+                          height="12"
+                        />
+                        <rect
+                          x="273.28"
+                          y="302.304"
+                          style="fill:#C1C1C1;"
+                          width="34.576"
+                          height="12"
+                        />
+                      </g>
+                      <rect
+                        x="100.424"
+                        y="302.304"
+                        style="fill:#6B6B6B;"
+                        width="103.704"
+                        height="12"
+                      />
+                    </svg>
+                  </div>
                 </span>
               </Switch>
             </li>
@@ -845,6 +835,61 @@
         </Expandable>
         <!-- not loading -->
       {/if}
+    </span>
+    <span slot="tab2">
+      {#if $hasSchema}  
+        <h3> Schema found </h3>
+        <Filelink href={currentFile}>
+          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+        </Filelink>
+        <Schema />
+      {:else if schema_error}
+      <h3> Schema with JSON error found </h3>
+        <Filelink href={currentFile}>
+          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+        </Filelink>
+        <div box>
+        {schema_error.message}
+          <code>
+            {#each schema_error.content.split(/\n/) as line }
+              <span>{@html line.replace(/\s/g, '&nbsp;')} </span><br/>
+            {/each}
+          </code>
+        </div>
+      {:else }
+        <h3> No Schema found </h3>
+        <Filelink href={currentFile}>
+          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+        </Filelink>
+      {/if}
+        <!-- <div style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);">
+          <JSONTree value={$schema} />
+        </div> -->
+      </span>
+    <span slot="tab3">
+      <Expandable>
+        <h3 slot="opener"> Errors </h3>
+        <div >
+          Errors
+        </div>
+      </Expandable>
+      <Expandable>
+        <h3 slot="opener"> Warnings </h3>
+        <div style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);">
+          {#each (build_warnings || []) as warning }
+            <Expandable>
+              <h4 slot="opener" class="warning-label"> { warning.message } </h4>
+              <div>
+                <p class="warning-text warning-frame"> 
+                  {#each (warning.frame || '').split('\n') as line }
+                    { line.replace(/^\d+:/, '   ').replace('^', '👆') } <br />
+                  {/each}
+                </p>
+              <JSONTree value={warning} /></div>
+            </Expandable>
+          {/each}
+        </div>
+      </Expandable>
     </span>
   </Tabs>
 </div>
@@ -865,7 +910,7 @@
   }
 
   .container {
-    padding: 1em 0.2em;
+    padding: .4em 0.2em;
   }
   .icon {
     color: var(--vscode-foreground);
@@ -893,6 +938,7 @@
     display: flex;
     justify-content: flex-start;
   }
+  h1 { font-size: 1.5em; }
 
   h1,
   h3 {
@@ -945,5 +991,50 @@
     height: 3em;
     margin-bottom: -0.2em;
     flex: 0 0 auto;
+  }
+
+  .warning-label {
+    color: var(--vscode-debugTokenExpression-name);
+  }
+
+  .warning-text {
+    color: var(--vscode-debugTokenExpression-string);
+  }
+
+  .warning-number {
+    color: var(--vscode-debugTokenExpression-number);
+  }
+
+  .warning-frame {
+    padding: 0.5em .3em 0.5em 1em;
+  }
+
+  .badge {
+    background-color: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    position: absolute;
+    left: 100%;
+    bottom: 100%;
+    border-radius: 55%;
+    padding: .5em;
+    font-size: 8px;
+  }
+
+  .schema-changes {
+    padding: .5em .2em;
+    background-color: var(--vscode-panel-background);
+    color: var(--vscode-foreground);
+    border: 1px solid var(--vscode-foreground);
+    margin: 1em 0;
+  }
+  .schema-changes-actions {
+    display: flex;
+    margin-top: .5em;
+  }
+  .schema-changes-actions button {
+    margin: .2em;
+  }
+  button[secondary] {
+    background-color: var(--vscode-button-secondaryBackground);
   }
 </style>

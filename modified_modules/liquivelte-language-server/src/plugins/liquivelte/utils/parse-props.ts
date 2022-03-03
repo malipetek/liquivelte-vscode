@@ -86,8 +86,11 @@ export default function parseProps(str): { [key: string]: string, spread?: strin
 
   Object.keys(props).map(key => {
     if (/\{\s*\.\.\.(\w+)\s*\}/.test(key)) {
+      // @ts-ignore
       const [, variable] = key.match(/\{\s*\.\.\.(\w+)\s*\}/);
-      props.spread = variable;
+      // @ts-ignore
+      props['spread'] = variable;
+      // @ts-ignore
       delete props[key];
     }
   });

@@ -9,9 +9,17 @@ import { generateAllScripts } from './generate-theme/process-theme';
 import { SidebarProvider } from "./sidebar/sidebar-provider";
 import { updateLiquivelteVirtualDocument, liquivelteProvider } from './utils/virtual-document';
 import { triggerUpdateDecorations } from './utils/decorations';
+import { activeFileChangeHandler } from './utils/state-change-handlers';
 import state from './utils/state';
 
-state.set = { openEditor: vscode.window.activeTextEditor };
+state.set = {
+	openEditor: vscode.window.activeTextEditor,
+	openPreview: '',
+	sidebar: '',
+	templates: [],
+	buildErrors: [],
+	buildWarnings: []
+};
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -39,6 +47,47 @@ export async function activate (context: vscode.ExtensionContext)
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("liquivelte-sidebar", sidebarProvider)
 	);
+
+	state.watch['openEditor'] = activeFileChangeHandler;
+
+	state.watch['buildWarnings'] = (warnings: any) =>
+	{
+		if(state['sidebar'].webview) {
+			state['sidebar'].webview.postMessage({
+				type: "build-warnings",
+				data: warnings
+			});
+		}
+	};
+	state.once['sidebar'] = (sidebar: vscode.WebviewView) =>
+	{
+		state.until['templates'] = (templates) =>
+		{
+			// This falsy return statement removes the watcher function
+			if (!state['sidebar'] || !templates) return;
+			Object.keys(templates).forEach((template) =>
+			{
+				state.until[template] = (value) =>
+				{
+					if (!state['sidebar']) return false;
+								
+					sidebar.webview.postMessage({
+						type: "building-state",
+						data: {
+							template,
+							...value
+						}
+					});
+				};
+			});
+					
+			sidebar.onDidDispose(e =>
+			{
+				state['sidebar'] = null;
+			});
+		}
+	};
+	
 	
 	// vscode.window.onDidChangeActiveTextEditor(function (textEditor: vscode.TextEditor | undefined)
 	// {
@@ -49,6 +98,12 @@ export async function activate (context: vscode.ExtensionContext)
 	// 		}
 	// 	}
 	// });
+
+	vscode.window.onDidChangeActiveTextEditor(async function (textEditor: vscode.TextEditor | undefined)
+	{
+		state['openEditor'] = textEditor;
+		state['openPreview'] = null;
+	});
 
 	subscriptions.push(vscode.commands.registerCommand('liquivelte.openPreview', async (_uri: vscode.TextEditor) =>
 	{
@@ -61,17 +116,12 @@ export async function activate (context: vscode.ExtensionContext)
 
 		const uri = vscode.Uri.parse('liquivelte:' + editor.document.uri.path);
 		const doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-		state['openEditor'] = await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.Two });
+		state['openPreview'] = await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.Two });
 
 
 		triggerUpdateDecorations(state['openPreviews'][editor.document.fileName]);
 
 		// let decoRanges: vscode.DecorationOptions[] = [];
-
-		vscode.window.onDidChangeActiveTextEditor(function (textEditor: vscode.TextEditor | undefined)
-		{
-
-		});
 		vscode.window.onDidChangeTextEditorSelection(async function (event: vscode.TextEditorSelectionChangeEvent)
 		{
 			const [selection] = event.selections;

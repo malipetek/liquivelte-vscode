@@ -17,10 +17,28 @@ export class DiagnosticsManager {
         });
     }
 
-    async update(document: Document) {
-        const diagnostics = await this.getDiagnostics({ uri: document.getURL() });
+    async update (document: Document)
+    {
+        const documentUri = document.getURL();
+        const liquivelteUri = documentUri.replace('file:', 'liquivelte:');
+        let diagnostics = await this.getDiagnostics({ uri: documentUri });
+        let replaceOperations = [];
+        if (this.docManager.documents.has(liquivelteUri)) { 
+            let liquivelteDoc = this.docManager.get(liquivelteUri);
+            replaceOperations = liquivelteDoc?.replaceOperations || [];
+        }
+        if (replaceOperations) {
+            diagnostics = diagnostics.map(dia =>
+            {
+                // @ts-ignore
+                const lineAdditionsBefore = replaceOperations.filter(op => op.was.lines[0] < dia.range.start.line && op.linesAdded).reduce((acc, op) => acc + op.linesAdded, 0);
+                dia.range.start.line -= lineAdditionsBefore;
+                dia.range.end.line -= lineAdditionsBefore;
+                return dia;
+            });
+        }
         this.sendDiagnostics({
-            uri: document.getURL(),
+            uri: documentUri,
             diagnostics
         });
     }

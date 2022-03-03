@@ -6,7 +6,7 @@ import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 
-export default function rawIncludeProcessor (markup: string, ms: MagicString, { rawIncludeRegistry }: { rawIncludeRegistry: any[] }): ReplaceResult {
+export default function rawIncludeProcessor (markup: string, ms: MagicString, { rawIncludeRegistry, replaceOperations }: { rawIncludeRegistry: any[], replaceOperations: any[] }): ReplaceResult {
   markup.replace(/\{%-*\s*(include)\s*['"](.*?)['"]\s*(.*?)\s*-*%\}/gim, (a, keyword, include, rest, offset) =>
   {
     const line = getLineFromOffset(markup, offset);

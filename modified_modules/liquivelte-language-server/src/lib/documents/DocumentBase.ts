@@ -1,6 +1,6 @@
 import { clamp } from '../../utils';
 import { Position, TextDocument } from 'vscode-languageserver';
-
+import transformSync from '../../plugins/liquivelte/preprocess/preprocessor';
 /**
  * Represents a textual document.
  */
@@ -8,23 +8,22 @@ export abstract class ReadableDocument implements TextDocument {
     /**
      * Get the text content of the document
      */
-    abstract getText(): string;
-
+     abstract getText(): string;
     /**
      * Returns the url of the document
      */
     abstract getURL(): string;
-
+    
     /**
      * Returns the file path if the url scheme is file
      */
     abstract getFilePath(): string | null;
-
+    
     /**
      * Current version of the document.
      */
     public version = 0;
-
+    
     /**
      * Get the length of the document's content
      */

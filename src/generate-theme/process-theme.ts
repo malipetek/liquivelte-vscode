@@ -1,5 +1,4 @@
 import { Liquid, LiquidError, TagToken, Context, Emitter, TopLevelToken, Template } from 'liquidjs';
-import { src_url_equal } from 'svelte/internal';
 const liquidEngine = new Liquid();
 import * as vscode from 'vscode';
 import toCamelCase from '../utils/to-camel-case';
@@ -49,14 +48,6 @@ const include_parseFilePath = include.parseFilePath;
 // @ts-ignore
 const include_renderFilePath = include.renderFilePath;
 const include_render = include.render;
-// include.parse = function (tag, args)
-// {
-//   // console.log('include parsing ', /module\s/.test(tag.args) ? tag.args : '');
-//   if (/module\s/.test(tag.args)) {
-//     return false;
-//   }
-//   return include_parse.apply(this, arguments);
-// }
 
 // @ts-ignore
 include.parseFilePath = function (tokenizer, liquid)
@@ -177,16 +168,16 @@ async function generateEntryScript (svelteIncludes): Promise<string>
     }
     return false;
   })
-  return svelteIncludes.reduce((acc, include) => `${acc}import ${toCamelCase(include.module)} from '../snippets/${include.module}.liquivelte';
+  return svelteIncludes.reduce((acc, include) => `${acc}import ${toCamelCase(include.module || include.file)} from '../${include.name === 'section' ? 'sections' : 'snippets'}/${include.module || include.file}.liquivelte';
 `, '') + `
 document.addEventListener('DOMContentLoaded', () => {
   ` +
     svelteIncludes.reduce((acc, include) => `${acc}
-Array.from(document.querySelectorAll('.liquivelte-component.${include.module}')).forEach(wrapper => {
+Array.from(document.querySelectorAll('.liquivelte-component.${include.module || include.file}')).forEach(wrapper => {
   let svelteProps = wrapper.svelteProps;
   let rawIncludes = wrapper.rawIncludes;
 
-  new ${toCamelCase(include.module)}({
+  new ${toCamelCase(include.module || include.file)}({
     target: wrapper,
     hydrate: true,
     props: {
@@ -211,11 +202,11 @@ export async function generateAllScripts ()
     try {
       await generateTemplateScript(vscode.Uri.joinPath(templatesFolder, template[0]), template[0], themeDirectory);
     } catch (err) {
-      throw err;
+      console.log('error generating template script', err);
     }
   })).catch(err =>
   {
-    throw err;
+    console.log('error filtering templates', err);
   });
 }
 
@@ -228,7 +219,7 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
 
     // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
 
-    let svelteIncludes = allIncludes.includes.filter(e => e.file === 'svelte');
+    let svelteIncludes = allIncludes.includes.filter(e => e.file === 'svelte' || e.name === 'section');
     if (svelteIncludes.length === 0) { return 1; }
       svelteIncludes = svelteIncludes.map(e =>
       {
@@ -282,7 +273,13 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
           //   output: { beautify: false, quote_style: 3 },
           //   parse: {},
           // })
-        ]
+        ],
+        onwarn: (warning, warn) =>
+        { 
+          state['buildWarnings'] = [...state['buildWarnings'], warning]; 
+          console.log('warning ', warning);
+          return;
+        }
       };
   
       // you can create multiple outputs from the same input to generate e.g.
@@ -292,6 +289,7 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
         name: 'theme.liquivelte.' + templateName.replace('.liquid', ''),
         format: 'iife',
         file: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided, 'assets', `${templateName}.js`).fsPath,
+        
       }];
 
       state[templateName] = { loading: true };
@@ -315,7 +313,7 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
         } catch (error) {
           buildFailed = true;
           // do some error reporting
-          console.error(error);
+          console.error('build error', error);
         }
         if (bundle) {
           // closes the bundle
@@ -388,29 +386,39 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
       try {
         const sectionsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided, 'sections');
         const snippetsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided, 'snippets');
-  
         // console.log('file ', file.path.split('/').pop());
         let templateFile = (await vscode.workspace.fs.readFile(file)).toString();
 
         if (path.parse(file.path).ext === '.json') {
           const json = JSON.parse(templateFile.toString());
           const sections = Object.keys(json.sections).map(sectionName => json.sections[sectionName].type);
-          templateFile = (await Promise.all(sections.map(async section =>
+          /*******************************************************
+           * IF IT IS A LIQUIVELTE SECTION WE MAKE IT AN INCLUDE *
+           *******************************************************/
+          const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
+          let sectionIncludes = sections.filter(section =>
+          {
+            // @ts-ignore
+            return liquivelteSections.indexOf(`${section}.liquivelte`) !== -1;
+          });
+
+          allIncludes = [...allIncludes, ...sectionIncludes.map(section => ({file: section, name: 'section'}))];
+
+          /*********************************************************
+           * IF IT IS NOT WE GET ALL SECTIONS AND CONCATENATE THEM *
+           *********************************************************/
+          templateFile = (await Promise.all(sections.filter(section => sectionIncludes.indexOf(section) === -1).map(async section =>
           {
             return await vscode.workspace.fs.readFile(vscode.Uri.joinPath(sectionsFolder, `${section}.liquid`));
           }))).reduce((acc, curr) => acc + curr.toString(), '');
-          }
-      
+        }
+
+
         const parsed = liquidEngine.parse(templateFile);
         // @ts-nocheck
         // @ts-ignore
         const includes = parsed.reduce((col, block) =>
         {
-          // @ts-ignore
-          if (block.impl?.file === 'svelte') {
-            // console.log('Branch ', block, block.impl?.file === 'svelte');
-          }
-      
           // @ts-ignore
           const branchTemplates = (block.impl?.branches || []).reduce((col, branch) =>
           {
@@ -424,10 +432,14 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
           // @ts-ignore
           .map(include =>
           {
-            if (!(include.impl.namestr || include.impl.file || '').replace) {
+            if (!(include.impl.namestr || include.impl.file).replace) {
               console.log('include.impl.namestr, include.impl.file ', include.impl.file, include);
             }
-            return ({ hash: include.impl?.hash?.hash, name: include.name, file: (include.impl.namestr || include.impl.file?.input || include.impl.file || '').replace(/^["']|["']$/gi, '') });
+            return ({
+              hash: include.impl?.hash?.hash,
+              name: include.name,
+              file: (include.impl.namestr || include.impl.file?.input || include.impl.file || '').replace(/^["']|["']$/gi, '')
+            });
           });
     
         // console.log(file.path.split('/').pop(), ' includes ', parsed);
@@ -444,7 +456,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
           }));
         }
       } catch (err) {
-        throw err;
+        console.log('error getting includes ', err);
       }
     }
   

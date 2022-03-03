@@ -260,7 +260,8 @@ async function createLanguageService(
     }
 
     function hasFile(filePath: string): boolean {
-        return snapshotManager.has(filePath);
+        return false;
+        snapshotManager.has(filePath);
     }
 
     function fileBelongsToProject(filePath: string): boolean {

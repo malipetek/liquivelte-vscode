@@ -120,19 +120,19 @@ export interface ITranspiledSvelteDocument extends PositionMapper {
 export class TranspiledSvelteDocument implements ITranspiledSvelteDocument {
     static async create(document: Document, config: SvelteConfig | undefined) {
         if (!config?.preprocess) {
-            return new TranspiledSvelteDocument(document.getText());
+            // return new TranspiledSvelteDocument(document.getText());
         }
 
         const filename = document.getFilePath() || '';
         const svelte = importSvelte(filename);
-        const preprocessed = await svelte.preprocess(
+        let preprocessed = await svelte.preprocess(
             document.getText(),
             wrapPreprocessors(config?.preprocess),
             {
                 filename
             }
         );
-
+        
         if (preprocessed.code === document.getText()) {
             return new TranspiledSvelteDocument(document.getText());
         }

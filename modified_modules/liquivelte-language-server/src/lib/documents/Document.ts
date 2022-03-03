@@ -4,6 +4,7 @@ import { extractScriptTags, extractStyleTag, extractTemplateTag, TagInformation 
 import { parseHtml } from './parseHtml';
 import { SvelteConfig, configLoader } from './configLoader';
 import { HTMLDocument } from 'vscode-html-languageservice';
+import { transformSync } from '../../plugins/liquivelte/preprocess/preprocessor';
 
 /**
  * Represents a text document contains a svelte component.
@@ -17,6 +18,7 @@ export class Document extends WritableDocument {
     configPromise: Promise<SvelteConfig | undefined>;
     config?: SvelteConfig;
     html!: HTMLDocument;
+    replaceOperations?: any[];
 
     constructor(public url: string, public content: string) {
         super();
@@ -59,15 +61,21 @@ export class Document extends WritableDocument {
     /**
      * Get text content
      */
-    getText(): string {
+    getText (): string
+    {
         return this.content;
+        const {code, replaceOperations} = transformSync(this.content);
+        this.replaceOperations = replaceOperations;
+        return code;
     }
 
     /**
      * Set text content and increase the document version
      */
     setText(text: string) {
+        // const {code, replaceOperations} = transformSync(text);
         this.content = text;
+        // this.replaceOperations = replaceOperations;
         this.version++;
         this.updateDocInfo();
     }
@@ -83,7 +91,7 @@ export class Document extends WritableDocument {
      * Get URL file path.
      */
     getURL() {
-        return this.url;
+        return this.url; //.replace('file:', 'liquivelte:');
     }
 
     /**

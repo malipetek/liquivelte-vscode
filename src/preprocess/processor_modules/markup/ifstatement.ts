@@ -4,9 +4,8 @@ import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryMod
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function ifStatementProcessor (markup: string, ms: MagicString, { liquidContent }): ReplaceResult
+export default function ifStatementProcessor (markup: string, ms: MagicString, { liquidContent, replaceOperations } : { liquidContent: string, replaceOperations: any[] }): ReplaceResult
 {
-  const replaceOperations: ReplaceOperation[] = [];
 
   markup.replace(/\{%-*\s*if\s*(.*?)\s*-*%\}/gim, (a, exp, offset) =>
   {

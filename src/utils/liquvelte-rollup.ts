@@ -241,22 +241,43 @@ export function liquivelteLiquidPlugin(options?) {
 				const fileName = filePath.base;
 				const parentFolderName = parentFolder.base;
 				const dest = path.resolve(themePath, parentFolderName, fileName);
-				let finalLiquidContent = imp.liquidContent.replace(/<slot\s*[^/]*\/>/gi, 
-					`
-					{% liquid 
-						assign slot_contents_and_values = slot_contents | split: '-scs-'
-						for content_and_value in slot_contents_and_values
-							assign module = content_and_value | split: '-scvs-' | first
-							assign value = content_and_value | split: '-scvs-' | last
-							if module == '${path.parse(id).name}'
-								assign children = value
-							endif
-						endfor
-					%}
-					{% if children != blank %}
-						{{ children }}
-					{% endif %}
-					{% assign children = '' %}`);
+				let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
+				{
+					if (!named) {
+						return `{% liquid 
+	assign slot_contents_and_values = slot_contents | split: '-scs-'
+	for content_and_value in slot_contents_and_values
+		assign module = content_and_value | split: '-scvs-' | first
+		assign value = content_and_value | split: '-scvs-' | last
+		if module == '${path.parse(id).name}'
+			assign children = value
+		endif
+	endfor
+%}
+{% if children != blank %}
+	{{ children }}
+{% endif %}
+{% assign children = '' %}`;
+					}
+					return `{% liquid
+	assign slot_contents_and_values = slot_contents | split: '-scs-'
+	for content_and_value in slot_contents_and_values
+	assign module_and_slotname = content_and_value | split: '-scvs-' | first
+	assign module = module_and_slotname | split: '-smns-' | first
+	assign name = module_and_slotname | split: '-smns-' | last
+	assign value = content_and_value | split: '-scvs-' | last
+	if module == '${path.parse(id).name}' and name == '${name}'
+		assign children_${name} = value
+	endif
+endfor
+%}
+{% if children_${name} != blank %}
+{{ children_${name} }}
+{% endif %}
+{% assign children_${name} = '' %}
+						`;
+				
+});
 				
 				exportedObjectVariables.forEach(variable =>
 				{
@@ -274,9 +295,8 @@ export function liquivelteLiquidPlugin(options?) {
 				});
 
 				if (id === main_import) {
-					finalLiquidContent = `
-					{% capture props_script %}
-						<script type="text/noscript" class="instance-data">{
+					finalLiquidContent = `{% capture props_script %}
+	<script type="text/noscript" class="instance-data">{
 							${liquidImportsModule
 															.map(v => `"${v}" : {{ ${v} | json }} `)
 															.join(', ')
@@ -286,63 +306,61 @@ export function liquivelteLiquidPlugin(options?) {
 															.map(v => `"${v.id}": {{ ${v.importStatement} | json }} `)
 															.join(', ')
 														}
-					}</script>
-					{% endcapture %}
-					{% liquid 
-						assign props_arr = props | split: '-prsp-'
-						for prop in props_arr
-							assign propName = prop | split: '-kvsp-' | first
-							assign propValue = prop | split: '-kvsp-' | last | remove: '"'
-							if propValue contains '{' and propValue contains '}'
-								assign propValue = propValue | remove: '{' | remove: '}'
-								assign propValueArr = propValue | split: ','
-								for entry in propValueArr
-									assign key = entry | split: ':' | first | strip | remove: '"'
-									assign value = entry | split: ':' | last | strip | remove: '"'
-									assign composite_key = propName | append: '_' | append: key
-								${exportedObjectVariables.reduce((c, v) => `${c}
-									${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
-									if composite_key == '${Object.keys(v)[0]}_${k}'
-										assign ${Object.keys(v)[0]}_${k} = value
-									endif  
-									`, '')}
-								`, '')}
-								endfor
-							endif${exportedVariables.reduce((c, v) => `${c}
-							if propName == '${v}'
-								assign ${v} = propValue
-							endif`, '')}
-						endfor
-					%}${finalLiquidContent}
-					`;
+}</script>
+{% endcapture %}
+{% liquid 
+	assign props_arr = props | split: '-prsp-'
+	for prop in props_arr
+		assign propName = prop | split: '-kvsp-' | first
+		assign propValue = prop | split: '-kvsp-' | last | remove: '"'
+		if propValue contains '{' and propValue contains '}'
+			assign propValue = propValue | remove: '{' | remove: '}'
+			assign propValueArr = propValue | split: ','
+			for entry in propValueArr
+				assign key = entry | split: ':' | first | strip | remove: '"'
+				assign value = entry | split: ':' | last | strip | remove: '"'
+				assign composite_key = propName | append: '_' | append: key
+			${exportedObjectVariables.reduce((c, v) => `${c}
+				${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
+				if composite_key == '${Object.keys(v)[0]}_${k}'
+					assign ${Object.keys(v)[0]}_${k} = value
+				endif  
+				`, '')}
+			`, '')}
+			endfor
+		endif${exportedVariables.reduce((c, v) => `${c}
+		if propName == '${v}'
+			assign ${v} = propValue
+		endif`, '')}
+	endfor
+%}${finalLiquidContent}`;
 				} else {
 					finalLiquidContent = `{% liquid 
-						assign props_arr = props | split: '-prsp-'
-						for prop in props_arr
-							assign propName = prop | split: '-kvsp-' | first
-							assign propValue = prop | split: '-kvsp-' | last | remove: '"'
-							if propValue contains '{' and propValue contains '}'
-								assign propValue = propValue | remove: '{' | remove: '}'
-								assign propValueArr = propValue | split: ','
-								for entry in propValueArr
-									assign key = entry | split: ':' | first | strip | remove: '"'
-									assign value = entry | split: ':' | last | strip | remove: '"'
-									assign composite_key = propName | append: '_' | append: key
-								${imp.exportedObjectVariables.reduce((c, v) => `${c}
-									${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
-									if composite_key == '${Object.keys(v)[0]}_${k}'
-										assign ${Object.keys(v)[0]}_${k} = value
-									endif  
-									`, '')}
-								`, '')}
-								endfor
-							endif${imp.exportedVariables.reduce((c, v) => `${c}
-							if propName == '${v}'
-								assign ${v} = propValue
-							endif`, '')}
-						endfor
-					%}${finalLiquidContent}
-					`
+assign props_arr = props | split: '-prsp-'
+for prop in props_arr
+	assign propName = prop | split: '-kvsp-' | first
+	assign propValue = prop | split: '-kvsp-' | last | remove: '"'
+	if propValue contains '{' and propValue contains '}'
+		assign propValue = propValue | remove: '{' | remove: '}'
+		assign propValueArr = propValue | split: ','
+		for entry in propValueArr
+			assign key = entry | split: ':' | first | strip | remove: '"'
+			assign value = entry | split: ':' | last | strip | remove: '"'
+			assign composite_key = propName | append: '_' | append: key
+		${imp.exportedObjectVariables.reduce((c, v) => `${c}
+			${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
+			if composite_key == '${Object.keys(v)[0]}_${k}'
+				assign ${Object.keys(v)[0]}_${k} = value
+			endif  
+			`, '')}
+		`, '')}
+		endfor
+	endif${imp.exportedVariables.reduce((c, v) => `${c}
+	if propName == '${v}'
+		assign ${v} = propValue
+	endif`, '')}
+endfor
+%}${finalLiquidContent}`
 				}
 				
 			fs.writeFileSync(dest, finalLiquidContent);

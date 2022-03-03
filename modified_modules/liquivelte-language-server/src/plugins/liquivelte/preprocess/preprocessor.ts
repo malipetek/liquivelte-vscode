@@ -8,13 +8,15 @@ import themeImportProcessor from './processor_modules/script/theme-import';
 import liquivelteImportProcessor from './processor_modules/script/liquivelte-import';
 import ifStatementProcessor from './processor_modules/markup/ifstatement';
 import rawIncludeProcessor from './processor_modules/markup/rawinclude';
+import removeLiquid from './processor_modules/markup/removeliquid';
+
 import path from 'path';
 
 import { ReplaceOperation } from '../types/replace-operation';
 import { ImportEntry } from '../types/import-entry';
 import stripTags from '../utils/strip-tags';
 
-async function applyReplaces (replacers, content, filename)
+function applyReplaces (replacers, content, filename)
 {
   const replaceOperations: ReplaceOperation[] = [];
   let liquidImportsModule: string[] = [];
@@ -30,15 +32,39 @@ async function applyReplaces (replacers, content, filename)
   let magicString = new MagicString(content, options);
 
   for (let replacer of replacers) {
-    const replaceResult = await replacer(content, magicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry });
+    const replaceResult = replacer(content, magicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry });
     // magicString = replaceResult.magicString;
     liquidContent = replaceResult.liquidContent ? replaceResult.liquidContent : liquidContent;
     // liquidImportsModule = [...liquidImportsModule, ...(replaceResult.liquidImportsModule || [])];
     // subImportsRegistryModule = [...subImportsRegistryModule, ...(replaceResult.subImportsRegistryModule || [])];
     // rawIncludeRegistry = [...rawIncludeRegistry, ...(replaceResult.rawIncludeRegistry || [])];
-    // replaceOperations.push(...replaceResult.replaceOperations);
+    replaceOperations.push(...replaceResult.replaceOperations);
   }
   return { magicString, replaceOperations, liquidContent, subImportsRegistryModule, liquidImportsModule, rawIncludeRegistry };
+}
+
+
+export function transformSync (content: string)
+{
+  const RR = applyReplaces([
+    themeImportProcessor,
+    expressionProcessor,
+    liquivelteImportProcessor,
+    ifStatementProcessor,
+    rawIncludeProcessor,
+    removeLiquid
+  ], content, 'noname');
+
+  RR.magicString.append(`
+  ${RR.rawIncludeRegistry.reduce((acc, rawInclude) => `${acc}
+  export let ${rawInclude.id}
+  `, '')}`);
+
+    return {
+      code: RR.magicString.toString(),
+      map: RR.magicString.generateMap(),
+      ...RR,
+    };
 }
 
 export default async function liquivelteTransformer (documentContent: string, fileUri: vscode.Uri): Promise<{ content: string, map: any, replaceOperations: any, liquidImportsModule, subImportsRegistryModule, exportedObjectVariables, exportedVariables, liquidContent: string }>
@@ -75,7 +101,8 @@ export default async function liquivelteTransformer (documentContent: string, fi
         expressionProcessor,
         liquivelteImportProcessor,
         ifStatementProcessor,
-        rawIncludeProcessor
+        rawIncludeProcessor,
+        removeLiquid
       ], content, filename);
 
       return {

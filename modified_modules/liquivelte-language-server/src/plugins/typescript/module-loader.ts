@@ -86,6 +86,7 @@ export function createSvelteModuleLoader(
     const svelteSys = createSvelteSys(getSnapshot);
     const moduleCache = new ModuleResolutionCache();
 
+    
     return {
         fileExists: svelteSys.fileExists,
         readFile: svelteSys.readFile,

@@ -26,6 +26,7 @@ export default async function ()
     if (directories.length > 0 && !directories.every(dir => dir === directories[0])) {
       // vscode.window.showErrorMessage('Config file has different directories set as theme directory', "OK");
       presetsSame = false;
+      state['templates'] = templates;
       return {
         srcFolder,
         configFile,
@@ -66,9 +67,13 @@ export default async function ()
     templatesArr = templatesArr.reduce((acc, val) => Array.isArray(val[0]) ? [...acc, ...val] : [...acc, val], []);
     templates = (await Promise.all(templatesArr.map(async templateFile => {
       return await getAllIncludes(templateFile[0], vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates', templateFile[0]), themeDirectory);
-    }))).reduce((col, entry) => ({...col, [entry.template]: entry }), {});
+    }))).reduce((col, entry) =>
+      ({ ...col, [entry.template]: entry }),
+      {});
   }
 
+  state['templates'] = templates;
+  
   return {
     srcFolder,
     presetsSame,

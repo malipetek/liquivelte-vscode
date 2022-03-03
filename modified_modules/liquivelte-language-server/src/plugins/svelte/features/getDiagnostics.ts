@@ -10,6 +10,7 @@ import { Logger } from '../../../logger';
 import { CompilerWarningsSettings } from '../../../ls-config';
 import { getLastPartOfPath, moveRangeStartToEndIfNecessary } from '../../../utils';
 import { SvelteDocument, TranspileErrorSource } from '../SvelteDocument';
+// import liquivelteTransformer from '../../liquivelte/preprocess/preprocessor';
 
 /**
  * Returns diagnostics from the svelte compiler.
@@ -41,7 +42,6 @@ async function tryGetDiagnostics(
     settings: CompilerWarningsSettings
 ): Promise<Diagnostic[]>
 {
-    console.log('Getting diagnostics');
     const transpiled = await svelteDoc.getTranspiled();
 
     try {

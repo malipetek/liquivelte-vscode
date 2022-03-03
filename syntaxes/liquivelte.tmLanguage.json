@@ -6,6 +6,21 @@
   ],
   "uuid": "7582b62f-51d9-4a84-8c8d-fc189530faf6",
   "injections": {
+    "L:text.liquid.liquivelte": {
+      "patterns": [
+        {
+          "begin": "{%-?",
+          "end": "-?%}",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "text.html.liquid",
+          "patterns": [
+            {
+              "include": "text.html.liquid"
+            }
+          ]
+        }
+      ]
+    },
     "L:meta.script.liquivelte meta.lang.javascript - (meta source)": {
       "patterns": [
         {
@@ -312,8 +327,8 @@
     "interpolation": {
       "patterns": [
         {
-          "begin": "{[{%]?-?",
-          "end": "-?[%}]?}",
+          "begin": "\\{{1,2}-?",
+          "end": "\\-?\\}{1,2}",
           "beginCaptures": {
             "0": {
               "name": "punctuation.section.embedded.begin.liquivelte"
@@ -327,8 +342,8 @@
           "contentName": "meta.embedded.expression.liquivelte source.ts",
           "patterns": [
             {
-              "begin": "\\G\\s*(?={[{%]?-?)",
-              "end": "(?<=-?[%}]?})",
+              "begin": "\\G\\s*(?={[{%]*-?)",
+              "end": "(?<=-?[%}]*})",
               "patterns": [
                 {
                   "include": "source.ts#object-literal"
@@ -356,7 +371,7 @@
       ]
     },
     "special-tags-keywords": {
-      "match": "([%#@/:])\\s?(else\\s+if|[a-z]*)",
+      "match": "([%#@/:-{])\\s?(else\\s+if|[a-z]*)",
       "captures": {
         "1": {
           "name": "punctuation.definition.keyword.liquivelte"
@@ -364,7 +379,7 @@
         "2": {
           "patterns": [
             {
-              "match": "if|unless|else\\s+if|else|endif|endunless|assign|include|capture|endcapture|form|endform|schema|endschema|style|endstyle|javascript|endjavascript",
+              "match": "if|unless|else\\s+if|else|elsif|endif|endunless|assign|include|capture|endcapture|form|endform|schema|endschema|style|endstyle|javascript|endjavascript|schema|endschema|comment|endcomment|liquid",
               "name": "keyword.control.conditional.liquivelte"
             },
             {
@@ -391,7 +406,17 @@
       "patterns": [
         {
           "begin": "(?<=(if|key|then|catch|html).*?)\\G",
-          "end": "(?=[%}])",
+          "end": "(?=[-?%}])",
+          "name": "meta.embedded.expression.liquivelte source.ts",
+          "patterns": [
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
+          "begin": "(?<=(comment).*?)\\G",
+          "end": "(?=[-%}])",
           "name": "meta.embedded.expression.liquivelte source.ts",
           "patterns": [
             {
@@ -580,7 +605,7 @@
       ]
     },
     "special-tags-void": {
-      "begin": "({%*)\\s*((?:[@:])(else\\s+if|unless|[a-z]*))",
+      "begin": "({[%-]*)\\s*((?:[@:])(else\\s+if|unless|elsif|[a-z]*))",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.block.begin.liquivelte"
@@ -593,7 +618,7 @@
           ]
         }
       },
-      "end": "[%}]?}",
+      "end": "[-%}]*}",
       "endCaptures": {
         "0": {
           "name": "punctuation.definition.block.end.liquivelte"
@@ -607,8 +632,8 @@
       ]
     },
     "special-tags-block-begin": {
-      "begin": "([{%]?)\\s*([#%]\\s*([a-z]*))",
-      "end": "([%}])",
+      "begin": "({)\\s*([#%-]*\\s*([a-z]*))",
+      "end": "([-%]*})",
       "name": "meta.special.$3.liquivelte meta.special.start.liquivelte",
       "beginCaptures": {
         "1": {
@@ -634,8 +659,8 @@
       ]
     },
     "special-tags-block-end": {
-      "begin": "([{%])\\s*(/([a-z]*))",
-      "end": "([%}])",
+      "begin": "({)\\s*([/%-]*([a-z]*))",
+      "end": "([-%]*})",
       "name": "meta.special.$3.liquivelte meta.special.end.liquivelte",
       "beginCaptures": {
         "1": {
