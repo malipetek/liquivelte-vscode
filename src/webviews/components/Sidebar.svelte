@@ -47,7 +47,7 @@
   let build_errors = [];
 
   let schema_error;
-  $: console.log("schemaChanges ", $schemaChanges);
+  // $: console.log("schemaChanges ", $schemaChanges);
 
   let page = vscode.getState()?.page || "todos";
 
@@ -103,7 +103,7 @@
   }
   onMount(async () => {
     window.addEventListener("message", async (event) => {
-      console.log("webview message ", event.data);
+      // console.log("webview message ", event.data);
       const message = event.data;
       switch (message.type) {
         case "stats":
@@ -195,7 +195,7 @@
 
   $: if ($schemaChanges && watching) {
     // debounce save schema
-    console.log("saving debounced");
+    // console.log("saving debounced");
     debounce(saveSchema, 1000);
   }
 

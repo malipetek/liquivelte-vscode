@@ -43,7 +43,7 @@
   
   // let translationReferences = {};
 
-  $: console.log('$translations ', $sectionTranslations);
+  // $: console.log('$translations ', $sectionTranslations);
   
   // $: if($sectionTranslations && /^t:(.*)/g.test(setting[setting_key])) {
   //   Object.keys($sectionTranslations).map(locale => {

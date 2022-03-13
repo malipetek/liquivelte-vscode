@@ -4,7 +4,6 @@
   import SidePage from "../SidePage.svelte";
   import { schema } from '../store.js';
   import SchemaSettingInput from "./SchemaSettingInput.svelte";
-import { find, indexOf } from "lodash";
 
   export let exp_open = false;
   export let hide_label = false;
@@ -28,7 +27,7 @@ import { find, indexOf } from "lodash";
 
   $: keys = Object.keys($schema); 
 
-  $: console.log('Schema ', $schema);
+  // $: console.log('Schema ', $schema);
 </script>
 
 <div schema>
