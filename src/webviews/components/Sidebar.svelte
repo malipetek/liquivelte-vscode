@@ -4,33 +4,40 @@
   import Expandable from "./Expandable.svelte";
   import Switch from "./Switch.svelte";
   import Filelink from "./Filelink.svelte";
-  import JSONTree from 'svelte-json-tree';
+  import JSONTree from "svelte-json-tree";
   import Schema from "./schema/Schema.svelte";
-  import { slide } from 'svelte/transition';
+  import { slide } from "svelte/transition";
 
   import { onMount } from "svelte";
-  import { setContext } from 'svelte';
-  import { 
-    schema, 
-    schemaFromFile, 
-    sectionTranslations, 
-    sectionTranslationsFromFile, 
+  import { setContext } from "svelte";
+  import {
+    schema,
+    schemaFromFile,
+    sectionTranslations,
+    sectionTranslationsFromFile,
     schemaChanges,
-    hasSchema
-  } from './store.js';
+    hasSchema,
+  } from "./store.js";
 
   export let vscode;
   export const isDarkTheme = true;
 
-  setContext('vscode', vscode);
-
+  setContext("vscode", vscode);
+  function wait (ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  }
   let loading = true;
   let stats = {};
-  let currentFile = '';
+  let currentFile = "";
   let state = {
     infoOpen: false,
   };
   let translations = {};
+
+  let watching = false;
+
   let build_config = {
     is_ts: false,
     is_scss: false,
@@ -40,7 +47,7 @@
   let build_errors = [];
 
   let schema_error;
-  $: console.log('schemaChanges ', $schemaChanges);
+  $: console.log("schemaChanges ", $schemaChanges);
 
   let page = vscode.getState()?.page || "todos";
 
@@ -59,20 +66,40 @@
   function startWatch() {
     vscode.postMessage({ type: "start-watch", value: undefined });
   }
-  
+
   function createFolder(folder) {
-    vscode.postMessage({ type: "create-folder", value: undefined });
+    vscode.postMessage({ type: "create-folder", folder: folder });
+  }
+
+  function createFile(file) {
+    vscode.postMessage({ type: "create-file", file: file });
   }
 
   function saveSchema() {
-    vscode.postMessage({ type: "save-schema", file: currentFile, schema: $schema });
+    vscode.postMessage({
+      type: "save-schema",
+      file: currentFile,
+      schema: $schema,
+    });
     schemaFromFile.set(JSON.parse(JSON.stringify($schema)));
     saveTranslations();
   }
+  function discardChanges() {
+    $schema = JSON.parse(JSON.stringify(schemaFromFile));
+    $schemaChanges = false;
+  }
 
   function saveTranslations() {
-    vscode.postMessage({ type: "save-translations", sectionTranslations: $sectionTranslations });
-    sectionTranslationsFromFile.set(JSON.parse(JSON.stringify($sectionTranslations)));
+    vscode.postMessage({
+      type: "save-translations",
+      sectionTranslations: $sectionTranslations,
+    });
+    sectionTranslationsFromFile.set(
+      JSON.parse(JSON.stringify($sectionTranslations))
+    );
+  }
+  function cloneTheme() {
+    vscode.postMessage({ type: "clone-theme", value: undefined });
   }
   onMount(async () => {
     window.addEventListener("message", async (event) => {
@@ -81,7 +108,14 @@
       switch (message.type) {
         case "stats":
           stats = message.stats;
+          watching = message.stats.watching;
+          if (Object.keys(message.stats.buildConfig).length) {
+            build_config = message.stats.buildConfig;
+          }
           loading = false;
+          break;
+        case "watch-state":
+          watching = message.watching;
           break;
         case "active-file-changed":
           currentFile = message.data;
@@ -100,28 +134,33 @@
           };
           // templates[message.state.template] = message.state.loading;
           break;
-          case 'translations': {
-            // translations = message.translations;
-            sectionTranslations.set(message.sectionTranslations);
-            sectionTranslationsFromFile.set(JSON.parse(JSON.stringify(message.sectionTranslations)));
+        case "translations": {
+          // translations = message.translations;
+          sectionTranslations.set(message.sectionTranslations);
+          sectionTranslationsFromFile.set(
+            JSON.parse(JSON.stringify(message.sectionTranslations))
+          );
+        }
+        case "build-warnings":
+          build_warnings = message.data;
+          break;
+        case "build-errors":
+          build_errors = message.data;
+          break;
+        case "schema-changed":
+          if (message.data) {
+            schema.set({ ...message.data });
+            schemaFromFile.set(JSON.parse(JSON.stringify(message.data)));
+            hasSchema.set(true);
+          } else {
+            // no schema on this file
+            hasSchema.set(false);
+            schema.set({});
+            schemaFromFile.set({});
           }
-          case 'build-warnings':
-            build_warnings = message.data;
           break;
-          case 'schema-changed':
-            if(message.data) {
-              schema.set({...message.data});
-              schemaFromFile.set(JSON.parse(JSON.stringify(message.data)));
-              hasSchema.set(true);
-            } else {
-              // no schema on this file
-              hasSchema.set(false);
-              schema.set({});
-              schemaFromFile.set({});
-            }
-          break;
-          case 'schema-error':
-            schema_error = message.data;  
+        case "schema-error":
+          schema_error = message.data;
           break;
       }
     });
@@ -134,14 +173,73 @@
     stats.templates &&
     Object.keys(stats.templates).some((key) => stats.templates[key].loading);
 
-  $: console.log(build_config);
+  let initial_build_config = true;
+
+  $: if (build_config) {
+    if (!initial_build_config) {
+      vscode.postMessage({
+        type: "set-build-config",
+        buildConfig: build_config,
+      });
+    }
+    initial_build_config = false;
+  }
+
+  function debounce(fn, delay) {
+    let timer;
+    return (() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(), delay);
+    })();
+  }
+
+  $: if ($schemaChanges && watching) {
+    // debounce save schema
+    console.log("saving debounced");
+    debounce(saveSchema, 1000);
+  }
+
+  const escapeHtml = (unsafe) => {
+    return unsafe
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  };
+
+  let build_warnings_by_file = {};
+  $: if(build_warnings) {
+    build_warnings_by_file = {};
+    build_warnings.forEach((warning) => {
+      if (!build_warnings_by_file[warning.filename]) {
+        build_warnings_by_file[warning.filename] = {};
+      }
+      if (!build_warnings_by_file[warning.filename][warning.pos]) {
+        build_warnings_by_file[warning.filename][warning.pos] = warning;
+      }
+    });
+  }
+
+  let build_errors_by_file = {};
+  $: if(build_errors) {
+    build_errors_by_file = {};
+    build_errors.forEach((error) => {
+      if (!build_errors_by_file[error.filename]) {
+        build_errors_by_file[error.filename] = {};
+      }
+      if (!build_errors_by_file[error.filename][error.pos]) {
+        build_errors_by_file[error.filename][error.pos] = error;
+      }
+    });
+  }
 </script>
 
 <div class="container">
   <header>
     <div class="flex between vertical-center w-100">
       <div class="">
-        <h1>Liquivelte </h1>
+        <h1>Liquivelte</h1>
       </div>
       <div class="right">
         <svg
@@ -193,8 +291,8 @@
           /></svg
         >
         File
-        {#if $schemaChanges }
-        <div class="badge"> &nbsp;&nbsp;&nbsp;&nbsp; </div>
+        {#if $schemaChanges}
+          <div class="badge">&nbsp;&nbsp;&nbsp;&nbsp;</div>
         {/if}
       </a>
     </span>
@@ -206,23 +304,23 @@
           /></svg
         >
         Issues
-          {#if (build_warnings && build_warnings.length > 0) || (build_errors && build_errors.length > 0)}
-            <div class="badge">
-              {build_warnings.length + build_errors.length}
-            </div>
-          {/if}
+        {#if (build_warnings && build_warnings.length > 0) || (build_errors && build_errors.length > 0)}
+          <div class="badge">
+            {build_warnings?.length || 0 + build_errors?.length || 0}
+          </div>
+        {/if}
       </a>
     </span>
     <div slot="under-buttons">
-      {#if $schemaChanges}
-      <div class="schema-changes" transition:slide >
-        <p> Schema or translation changes are made </p>
-        <div class="schema-changes-actions">
-          <button on:click={saveSchema}> Save </button>
-          <button secondary> Discard </button>
+      {#if $schemaChanges && !watching}
+        <div class="schema-changes" transition:slide>
+          <p>Schema or translation changes are made</p>
+          <div class="schema-changes-actions">
+            <button on:click={saveSchema}> Save </button>
+            <button on:click={discardChanges} secondary> Discard </button>
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
     </div>
     <span slot="tab1">
       {#if loading}
@@ -257,9 +355,7 @@
                       d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
                     /></svg
                   >
-                  <span
-                    >Theme folder specified but doesn't seem like a theme:</span
-                  >
+                  <span>Theme folder specified but doesn't seem like a theme:</span>
                   <b>{stats.themeFolder}</b>
                   <button on:click={checkFolders}>Check again</button>
                 </div>
@@ -279,11 +375,11 @@
                     /></svg
                   >
                   <span
-                    >Theme folder specified but doesn't seem like a theme
+                    >Theme folder specified but it doesn't seem like a theme
                   </span>
                 </p>
                 <div class="block">
-                  <button>Initialize it for me</button>
+                  <button on:click={cloneTheme}>Initialize it for me</button>
                 </div>
               </div>
               <div class="container">
@@ -291,7 +387,7 @@
               </div>
             {/if}
           {:else}
-            <div class="container">
+            <div class="container" box>
               <svg
                 class="icon blockicon"
                 xmlns="http://www.w3.org/2000/svg"
@@ -308,9 +404,13 @@
             </div>
           {/if}
         {:else}
-          <div class="container">
+          <div class="container" box>
             You dont have a <b>config.yml</b> in the root.
-            <button>Create one for me</button>
+            <button on:click={async () => {
+              createFile('config.yml');
+              await wait(1000);
+              checkFolders();
+            }}>Create one for me</button>
           </div>
         {/if}
         {#if stats.srcFolder}
@@ -323,7 +423,8 @@
             <b>Src</b> folder found
           </div>
         {:else}
-          <div>
+          <div box>
+            <p>
             <svg
               class="icon blockicon"
               xmlns="http://www.w3.org/2000/svg"
@@ -335,21 +436,43 @@
                 d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
               /></svg
             >
-            Theme folder specified but doesn't seem like a theme: Src folder not
-            found
+              Src folder not found</p>
+            <button on:click={async () => {
+              createFolder('src');
+              await wait(300);
+              createFolder('src/snippets');
+              await wait(300);
+              createFolder('src/sections');
+              await wait(1000);
+              createFile('src/liquid.js');
+              checkFolders();
+            }}> Create one for me </button>
           </div>
         {/if}
         {#if stats.validTheme}
           <div class="block">
-            <button
-              on:click={() =>
-                vscode.postMessage({
-                  type: "regenerate-theme",
-                  value: undefined,
-                })}
-            >
-              Start Watching
-            </button>
+            {#if !watching}
+              <button
+                on:click={() =>
+                  vscode.postMessage({
+                    type: "start-watch",
+                    value: undefined,
+                  })}
+              >
+                Start Watching
+              </button>
+            {:else}
+              <button
+                class="btn-watching"
+                on:click={() =>
+                  vscode.postMessage({
+                    type: "end-watch",
+                    value: undefined,
+                  })}
+              >
+                Stop Watching
+              </button>
+            {/if}
           </div>
           <div class="block">
             <button
@@ -388,6 +511,55 @@
                     /></g
                   ></svg
                 >
+                Layouts
+                {#if buildLoading}
+                  <span class="spinner" />
+                {/if}
+              </h3>
+              <ul class="templates-list">
+                {#each Object.keys(stats.layouts) as layout}
+                  <li>
+                    <svg
+                      class="icon icon-file"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      ><path d="M0 0h24v24H0V0z" fill="none" /><path
+                        d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"
+                      /></svg
+                    >
+                    <Filelink href="{stats.themeFolder}/layout/{layout}">
+                      {layout}
+                    </Filelink>
+                    {#if stats.layouts[layout].includes.filter((incl) => incl.file === "liquivelte" || incl.name === "section").length}
+                      {#if stats.layouts[layout].loading}
+                        <div class="spinner" />
+                      {:else}
+                        <div class="chip">has liquivelte</div>
+                      {/if}
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            </Expandable>
+            <Expandable>
+              <h3 slot="opener">
+                <svg
+                  class="icon template"
+                  xmlns="http://www.w3.org/2000/svg"
+                  enable-background="new 0 0 24 24"
+                  viewBox="0 0 24 24"
+                  ><g
+                    ><rect fill="none" height="24" width="24" /><rect
+                      fill="none"
+                      height="24"
+                      width="24"
+                    /><rect fill="none" height="24" width="24" /></g
+                  ><g
+                    ><g /><path
+                      d="M20,4H4C2.9,4,2.01,4.9,2.01,6L2,18c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V6C22,4.9,21.1,4,20,4z M4,9h10.5v3.5H4V9z M4,14.5 h10.5V18L4,18V14.5z M20,18l-3.5,0V9H20V18z"
+                    /></g
+                  ></svg
+                >
                 Templates
                 {#if buildLoading}
                   <span class="spinner" />
@@ -404,8 +576,10 @@
                         d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"
                       /></svg
                     >
-                    <Filelink href="{stats.themeFolder}/templates/{template}"> {template} </Filelink>
-                    {#if stats.templates[template].includes.length}
+                    <Filelink href="{stats.themeFolder}/templates/{template}">
+                      {template}
+                    </Filelink>
+                    {#if stats.templates[template].includes.filter((incl) => incl.file === "liquivelte" || incl.name === "section").length}
                       {#if stats.templates[template].loading}
                         <div class="spinner" />
                       {:else}
@@ -418,7 +592,7 @@
             </Expandable>
           </div>
         {/if}
-        <Expandable>
+        <!-- <Expandable>
           <h3 slot="opener">
             <svg
               class="icon build"
@@ -832,60 +1006,101 @@
               </Switch>
             </li>
           </ul>
-        </Expandable>
+        </Expandable> -->
         <!-- not loading -->
       {/if}
     </span>
     <span slot="tab2">
-      {#if $hasSchema}  
-        <h3> Schema found </h3>
+      {#if $hasSchema}
+        <h3>Schema found</h3>
         <Filelink href={currentFile}>
-          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+          <h3>{((currentFile || "").match(/[^\/]+$/) || ["no file"])[0]}</h3>
         </Filelink>
         <Schema />
       {:else if schema_error}
-      <h3> Schema with JSON error found </h3>
+        <h3>Schema with JSON error found</h3>
         <Filelink href={currentFile}>
-          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+          <h3>{((currentFile || "").match(/[^\/]+$/) || ["no file"])[0]}</h3>
         </Filelink>
         <div box>
-        {schema_error.message}
+          {schema_error.message}
           <code>
-            {#each schema_error.content.split(/\n/) as line }
-              <span>{@html line.replace(/\s/g, '&nbsp;')} </span><br/>
+            {#each schema_error.content.split(/\n/) as line}
+              <span class="nowrap"
+                >{@html escapeHtml(line).replace(/\s/g, "&nbsp;")}
+              </span><br />
             {/each}
           </code>
         </div>
-      {:else }
-        <h3> No Schema found </h3>
+      {:else}
+        <h3>No Schema found</h3>
         <Filelink href={currentFile}>
-          <h3> { ((currentFile||'').match(/[^\/]+$/) || ['no file'])[0] } </h3>
+          <h3>{((currentFile || "").match(/[^\/]+$/) || ["no file"])[0]}</h3>
         </Filelink>
       {/if}
-        <!-- <div style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);">
+      <!-- <div style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);">
           <JSONTree value={$schema} />
         </div> -->
-      </span>
+    </span>
     <span slot="tab3">
-      <Expandable>
-        <h3 slot="opener"> Errors </h3>
-        <div >
-          Errors
+      <Expandable open={true}>
+        <h3 slot="opener" class="relative">Errors</h3>
+        <div
+          style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);"
+        >
+          {#each Object.keys(build_errors_by_file) as file}
+            <Expandable>
+              <h4 slot="opener" class="warning-label">{(file.match(/\/[^\/]+$/) || ['unknown'])[0]}</h4>
+              <div>
+                {#each Object.keys(build_errors_by_file[file]) as pos}
+                  <Expandable>
+                    <h4 slot="opener" class="warning-label">{build_errors_by_file[file][pos].message || build_errors_by_file[file][pos].code}</h4>
+                    <code class="warning-text warning-frame">
+                      {build_errors_by_file[file][pos].message}
+                      {#each (build_errors_by_file[file][pos].frame || "").split("\n") as line}
+                        <span class="nowrap">
+                          {@html escapeHtml(line.replace("^", "👆")).replace(
+                            /\s/g,
+                            "&nbsp;"
+                          )}
+                        </span> <br />
+                      {/each}
+                    </code>
+                    <JSONTree value={build_errors_by_file[file][pos]} />
+                  </Expandable>
+                {/each}
+              </div>
+            </Expandable>
+          {/each}
         </div>
       </Expandable>
-      <Expandable>
-        <h3 slot="opener"> Warnings </h3>
-        <div style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);">
-          {#each (build_warnings || []) as warning }
+      <Expandable open={true}>
+        <h3 slot="opener" class="relative">Warnings</h3>
+        <div
+          style="--json-tree-label-color: var(--vscode-debugTokenExpression-name); --json-tree-string-color: var(--vscode-debugTokenExpression-string); --json-tree-number-color: var(--vscode-debugTokenExpression-number);"
+        >
+          {#each Object.keys(build_warnings_by_file) || [] as file}
             <Expandable>
-              <h4 slot="opener" class="warning-label"> { warning.message } </h4>
+              <h4 slot="opener" class="warning-label">{(file.match(/\/[^\/]+$/) || ['unknown'])[0]}</h4>
               <div>
-                <p class="warning-text warning-frame"> 
-                  {#each (warning.frame || '').split('\n') as line }
-                    { line.replace(/^\d+:/, '   ').replace('^', '👆') } <br />
-                  {/each}
-                </p>
-              <JSONTree value={warning} /></div>
+                {#each Object.keys(build_warnings_by_file[file]) as pos}
+                  <Expandable>
+                    <h4 slot="opener" class="warning-label">{build_warnings_by_file[file][pos].message || build_warnings_by_file[file][pos].code}</h4>
+                    <code class="warning-text warning-frame">
+                      {build_warnings_by_file[file][pos].message}
+                      {#each (build_warnings_by_file[file][pos].frame || "").split("\n") as line}
+                        <span class="nowrap">
+                          {@html escapeHtml(line.replace("^", "👆")).replace(
+                            /\s/g,
+                            "&nbsp;"
+                          )}
+                        </span> <br />
+                      {/each}
+                    </code>
+                    <JSONTree value={build_warnings_by_file[file][pos]} />
+                  </Expandable>
+                {/each}
+              </div>
             </Expandable>
           {/each}
         </div>
@@ -895,6 +1110,12 @@
 </div>
 
 <style>
+  div[box] {
+    margin: 0.3em 0.1em;
+    padding: 0.2em 0.1em 0.2em 0.3em;
+    border: 1px solid rgba(204, 204, 204, 0.342);
+    background-color:rgba(142, 142, 142, 0.1)
+  }
   .flex {
     display: flex;
   }
@@ -910,7 +1131,7 @@
   }
 
   .container {
-    padding: .4em 0.2em;
+    padding: 0.4em 0.2em;
   }
   .icon {
     color: var(--vscode-foreground);
@@ -938,7 +1159,9 @@
     display: flex;
     justify-content: flex-start;
   }
-  h1 { font-size: 1.5em; }
+  h1 {
+    font-size: 1.5em;
+  }
 
   h1,
   h3 {
@@ -1006,7 +1229,7 @@
   }
 
   .warning-frame {
-    padding: 0.5em .3em 0.5em 1em;
+    padding: 0.5em 0.3em 0.5em 1em;
   }
 
   .badge {
@@ -1016,12 +1239,12 @@
     left: 100%;
     bottom: 100%;
     border-radius: 55%;
-    padding: .5em;
+    padding: 0.5em;
     font-size: 8px;
   }
 
   .schema-changes {
-    padding: .5em .2em;
+    padding: 0.5em 0.2em;
     background-color: var(--vscode-panel-background);
     color: var(--vscode-foreground);
     border: 1px solid var(--vscode-foreground);
@@ -1029,12 +1252,25 @@
   }
   .schema-changes-actions {
     display: flex;
-    margin-top: .5em;
+    margin-top: 0.5em;
   }
   .schema-changes-actions button {
-    margin: .2em;
+    margin: 0.2em;
   }
   button[secondary] {
     background-color: var(--vscode-button-secondaryBackground);
+  }
+
+  .nowrap {
+    white-space: nowrap;
+  }
+
+  .btn-watching {
+    background-color: var(--vscode-debugConsole-warningForeground);
+  }
+
+  button {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
   }
 </style>

@@ -1,12 +1,23 @@
 {
   "name": "liquivelte",
   "displayName": "Liquivelte",
-  "description": "Write Shopify Themes With Svelte!",
-  "publisher": "liquivelte",
+  "description": "Write Shopify Themes With Svelte like syntax!",
+  "publisher": "malipetek",
+  "keywords": [
+    "theme",
+    "liquid",
+    "svelte",
+    "shopify",
+    "schema",
+    "translation"
+  ],
   "version": "0.0.1",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.55.0"
   },
+  "icon": "media/liquivelte-icon.png",
+  "repository": "https://github.com/malipetek/liquivelte-vscode",
   "categories": [
     "Other"
   ],
@@ -24,7 +35,7 @@
         {
           "id": "liquivelte-sidebar-view",
           "title": "Liquivelte",
-          "icon": "media/liquvelte-icon.svg"
+          "icon": "media/liquivelte-icon.svg"
         }
       ]
     },
@@ -34,7 +45,7 @@
           "type": "webview",
           "id": "liquivelte-sidebar",
           "name": "Liquivelte",
-          "icon": "media/liquvelte-icon.svg",
+          "icon": "media/liquivelte-icon.svg",
           "contextualTitle": "Liquivelte"
         }
       ]
@@ -538,18 +549,22 @@
     "@rollup/plugin-typescript": "^8.3.0",
     "@rollup/pluginutils": "^4.1.2",
     "debounce": "^1.2.1",
+    "debounce-async": "0.0.2",
     "deep-eql": "^4.0.0",
     "framework7": "^6.3.16",
     "framework7-svelte": "^6.3.16",
-    "fs-extra": "^10.0.0",
+    "fs-extra": "^10.0.1",
     "liquidjs": "^9.31.0",
     "liquidjs-section-tags": "^1.0.0",
     "liquivelte-language-server": "file:modified_modules/liquivelte-language-server",
     "magic-string": "^0.25.7",
+    "node-sass": "^7.0.1",
     "parse-yaml": "^0.1.0",
     "rollup-plugin-css-only": "^3.1.0",
+    "rollup-plugin-scss": "^3.0.0",
     "rollup-plugin-svelte": "^7.1.0",
     "rollup-plugin-terser": "^7.0.2",
+    "sass": "^1.49.9",
     "sourcemap-codec": "^1.4.8",
     "svelte": "^3.42.4",
     "svelte-json-tree": "^0.1.0",

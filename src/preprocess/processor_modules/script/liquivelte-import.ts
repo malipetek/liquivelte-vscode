@@ -10,7 +10,7 @@ import getNamedSlots from '../../../utils/get-named-slots';
 import parseProps from '../../../utils/parse-props';
 import path from 'path';
 
-export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, replaceOperations }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [], replaceOperations: any[] }): ReplaceResult
+export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry, formIncludes, replaceOperations }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [], replaceOperations: any[], rawIncludeRegistry: any[], formIncludes: any[] }): ReplaceResult
 {
 
   let modules = [];
@@ -44,7 +44,9 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
       const liquidImportProps = liquidImportsModule.reduce((c, imp) => `${c} ${imp}={${imp}}`, '') || '';
       // @ts-ignore
       const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
-      ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} >`);
+      const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
+      const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
+      ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} >`);
       return '';  
     });
 
@@ -92,7 +94,7 @@ ${slotContents.reduce((c, slotEntry) => `${c}
 {% capture slot_content_${module} %}${remainingContent}{% endcapture %}
 {% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_${module} %}
 
-{% include 'svelte', module: '${filename}', props: props, sub_include: true %}
+{% include 'liquivelte', module: '${filename}', props: props, sub_include: true %}
 {% assign props = '' %}`;
     });
   });

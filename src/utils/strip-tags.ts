@@ -4,5 +4,14 @@ export default function (markup: string, tagsToStrip? : string[]) : string
   tagsToStrip = tagsToStrip || ['style', 'script'];
   return tagsToStrip.map(tag =>
     createTagRegex(tag, 'gim'))
-    .reduce((col, reg) => col.replace(reg, ''), markup);
+    .reduce((col, reg) =>
+    {
+      return col.replace(reg, (a, props) =>
+      {
+        if (/liquivelte-keep/.test(props)) {
+          return a;
+        }
+        return '';
+      });
+    }, markup);
 }

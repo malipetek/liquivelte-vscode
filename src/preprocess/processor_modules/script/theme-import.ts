@@ -7,7 +7,7 @@ import createTagRegex from '../../../utils/create-tag-regex';
 
 export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[]}): ReplaceResult
 {  
-  script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme['"]/gim, (a, obj, subObject, offset) =>
+  script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme(.*)['"]/gim, (a, obj, subObject, afterTheme, offset) =>
   {
     const line = getLineFromOffset(script, offset);
 
@@ -45,7 +45,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       }
       ms.remove(offset, offset + 'import '.length);
       ms.appendLeft(offset, 'export let ');
-      ms.remove(offset + ('import ' + obj).length, offset + ('import ' + obj).length + ' from \'theme\''.length);
+      ms.remove(offset + ('import ' + obj).length, offset + ('import ' + obj).length + ` from \'theme${afterTheme}\'`.length);
       replaceOperations.push({
         was: {
           lines: [line]
@@ -59,7 +59,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       return '';
     }
   });
-
+  
   const result: ReplaceResult = {
     magicString: ms,
     subImportsRegistryModule,

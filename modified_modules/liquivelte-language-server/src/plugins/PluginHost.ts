@@ -75,8 +75,13 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
 
     async getDiagnostics (textDocument: TextDocumentIdentifier): Promise<Diagnostic[]>
     {
-        const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
-        let document = this.getDocument(liquivelteUri);
+        let document;
+        if (/\.liquivelte$/gi.test(textDocument.uri)) {
+            const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
+            document = this.getDocument(liquivelteUri);
+        } else {
+            document = this.getDocument(textDocument.uri);
+        }
 
         if (
             (document.getFilePath()?.includes('/node_modules/') ||
@@ -108,6 +113,7 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
     }
 
     async doHover(textDocument: TextDocumentIdentifier, position: Position): Promise<Hover | null> {
+        // const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
         let document = this.getDocument(textDocument.uri);
 
         return this.execute<Hover>(
@@ -123,7 +129,16 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
         position: Position,
         completionContext?: CompletionContext,
         cancellationToken?: CancellationToken
-    ): Promise<CompletionList> {
+    ): Promise<CompletionList>
+    {
+        // let document;
+        // if (/\.liquivelte$/gi.test(textDocument.uri)) {
+        //     const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
+        //     document = this.getDocument(liquivelteUri);
+        // } else {
+        //     document = this.getDocument(textDocument.uri);
+        // }
+        
         const document = this.getDocument(textDocument.uri);
 
         const completions = (
@@ -163,7 +178,16 @@ export class PluginHost implements LSProvider, OnWatchFileChanges {
         textDocument: TextDocumentIdentifier,
         completionItem: AppCompletionItem,
         cancellationToken: CancellationToken
-    ): Promise<CompletionItem> {
+    ): Promise<CompletionItem>
+    {
+        // let document;
+        // if (/\.liquivelte$/gi.test(textDocument.uri)) {
+        //     const liquivelteUri = textDocument.uri.replace('file:', 'liquivelte:');
+        //     document = this.getDocument(liquivelteUri);
+        // } else {
+        //     document = this.getDocument(textDocument.uri);
+        // }
+        
         const document = this.getDocument(textDocument.uri);
 
         const result = await this.execute<CompletionItem>(

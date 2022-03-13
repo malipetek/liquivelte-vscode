@@ -1,4 +1,6 @@
-export default function parseProps(str): { [key: string]: string, spread?: string } {
+// @ts-nocheck
+export default function parseProps (str): { [key: string]: string, spread?: string }
+{
   const props = {};
   let bracket = {
     bracketsOpened: 0,

@@ -327,8 +327,8 @@
     "interpolation": {
       "patterns": [
         {
-          "begin": "\\{{1,2}-?",
-          "end": "\\-?\\}{1,2}",
+          "begin": "\\{\\{?-?",
+          "end": "-?\\}?\\}",
           "beginCaptures": {
             "0": {
               "name": "punctuation.section.embedded.begin.liquivelte"
@@ -342,8 +342,8 @@
           "contentName": "meta.embedded.expression.liquivelte source.ts",
           "patterns": [
             {
-              "begin": "\\G\\s*(?={[{%]*-?)",
-              "end": "(?<=-?[%}]*})",
+              "begin": "\\G\\s*(?={[\\{%]*-?)",
+              "end": "(?<=-?[%\\}]*})",
               "patterns": [
                 {
                   "include": "source.ts#object-literal"

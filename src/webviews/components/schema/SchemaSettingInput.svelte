@@ -8,7 +8,7 @@
 
   function getTranslation(locale) {
     const accessors = setting[setting_key].match(/^t:(.*)/)[1].split('.');
-    const value = accessors.reduce((obj, k) => obj[k], $sectionTranslations[locale]);
+    const value = accessors.reduce((obj, k, i, all) => obj !== undefined ? obj[k] : (i === all.length - 1) ? "" : {}, $sectionTranslations[locale]);
     return value;
   }
   
@@ -17,7 +17,11 @@
     const accessors = setting[setting_key].match(/^t:(.*)/)[1].split('.');
     accessors.reduce((obj, k, i, a) => {
       if (i === a.length - 1) {
-        obj[k] = value;
+        obj[k] = value || "";
+      } else {
+        if(!obj[k]) {
+          obj[k] = {};
+        }
       }
       return obj[k];
     }, $sectionTranslations[locale]);

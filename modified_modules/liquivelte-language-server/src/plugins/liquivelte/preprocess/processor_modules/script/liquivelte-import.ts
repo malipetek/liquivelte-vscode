@@ -86,7 +86,7 @@ scvs stands for "slot component value separator"
 {% capture slot_content_${module} %}${children}{% endcapture %}
 {% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_${module} %}
 
-{% include 'svelte', module: '${filename}', props: props, sub_include: true %}
+{% include 'liquivelte', module: '${filename}', props: props, sub_include: true %}
 {% assign props = '' %}`;
     });
   });

@@ -1,4 +1,4 @@
-import createTagRegex from "./create-tag-regex";
+import { createSimplerTagRegex } from "./create-tag-regex";
 
 const tags = [
 "a",
@@ -142,13 +142,14 @@ const tags = [
 ];
 
 export default function (hash, liquidContent)
-{
-  return tags.map(tag =>
-    [tag, createTagRegex(tag, 'gim')])
-    .reduce((col, [tag, reg]) => col.replace(reg, (a, props, children) => {
-      props = ((props || '').trim() || 'class=""').replace(/class="([^"]*)"/g, (a, b) => {
+{ 
+  const newliquidContent = liquidContent.replace(/<(\w+)\s([^>]+)>/gim, (a, tag, props) =>
+  {
+    props = ((props || '').trim() || 'class=""').replace(/class="([^"]*)"/g, (a, b) =>
+      {
         return ` class="${b} ${hash}"`;
       });
-      return `<${tag} ${props}>${children || ''}</${tag}>`;
-  }), liquidContent)
+      return `<${tag} ${props}>`;
+   });
+  return newliquidContent;
 }

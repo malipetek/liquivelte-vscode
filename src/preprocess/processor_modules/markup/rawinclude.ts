@@ -6,15 +6,19 @@ import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 
-export default function rawIncludeProcessor (markup: string, ms: MagicString, { rawIncludeRegistry, replaceOperations }: { rawIncludeRegistry: any[], replaceOperations: any[] }): ReplaceResult {
+export default function rawIncludeProcessor (markup: string, ms: MagicString, { liquidContent, rawIncludeRegistry, replaceOperations }: { liquidContent: string, rawIncludeRegistry: any[], replaceOperations: any[] }): ReplaceResult {
+  let rawIncludes = [];
   markup.replace(/\{%-*\s*(include)\s*['"](.*?)['"]\s*(.*?)\s*-*%\}/gim, (a, keyword, include, rest, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
     var id = `rawinclude_${uid()}`;
     rawIncludeRegistry.push({
-      id
+      id,
+      include,
+      rest
     });
-    ms.overwrite(offset, offset + a.length, `{@html ${id}[(global.index || 0)]}`);
+    rawIncludes.push(id);
+    ms.overwrite(offset, offset + a.length, `{@html ${id}[index || 0]}`);
     replaceOperations.push({
       was: {
         lines: [line]
@@ -24,13 +28,30 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
       },
       explanation: `Snippet includes are treated like captured values`
     });
-    return '';
+    return ``;
   });
+
+  let index = 0;
+  liquidContent = liquidContent.replace(/\{%-*\s*(include)\s*['"](.*?)['"]\s*(.*?)\s*-*%\}/gim, (a, keyword, include, rest, offset) =>
+  { 
+    const id = rawIncludes[index];
+    index++;
+    return `
+    {%- capture rawinclude -%}{% include '${include}' ${rest} %}{%- endcapture -%}
+  <script liquivelte-keep>
+  window.liquivelte_rawincludes = window.liquivelte_rawincludes || {};
+  window.liquivelte_rawincludes['${id}'] = [...(window.liquivelte_rawincludes['${id}'] || []),\`{{ rawinclude | escape | strip_newlines }}\`];
+  document.currentScript.remove();
+</script>
+  {%- assign rawinclude = '' -%}`;
+  });
+
 
   const result: ReplaceResult = {
     magicString: ms,
     replaceOperations,
     rawIncludeRegistry,
+    liquidContent
   };
 
   return result;

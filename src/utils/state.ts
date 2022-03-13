@@ -7,6 +7,7 @@ interface State
   once: object;
   until: object;
   set?: object;
+  [key: string]: any;
 }
 
 const state: State = {

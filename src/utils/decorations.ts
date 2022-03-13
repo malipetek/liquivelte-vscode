@@ -58,8 +58,10 @@ export function triggerUpdateDecorations (operations: ReplaceOperation[], active
     clearTimeout(timeout);
     timeout = undefined;
   }
-  state['openPreview'].setDecorations(deco, []);
-  state['openPreview'].setDecorations(activeDeco, []);
+  if (state['openPreview']) {
+    state['openPreview'].setDecorations(deco, []);
+    state['openPreview'].setDecorations(activeDeco, []);
+  }
 
   timeout = setTimeout(() => updateDecorations(operations), 500);
 }

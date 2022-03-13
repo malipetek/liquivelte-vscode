@@ -48,6 +48,7 @@ export default function removeLiquid (markup: string, ms: MagicString, { rawIncl
   
 
   const result: ReplaceResult = {
+    replaceOperations,
     magicString: ms,
     rawIncludeRegistry,
   };

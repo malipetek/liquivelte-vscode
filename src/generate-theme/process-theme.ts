@@ -9,16 +9,22 @@ import svelte from 'rollup-plugin-svelte';
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import { terser } from 'rollup-plugin-terser';
+import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
+import scss from 'rollup-plugin-scss';
+import preprocess from 'svelte-preprocess';
 import { liquivelteLiquidPlugin, liquivelteSveltePlugin } from '../utils/liquvelte-rollup';
 import path from 'path';
 import state from '../utils/state';
+import debounce from 'debounce-async';
 
 const { workspaceFolders } = vscode.workspace;
 
 let themeDirectoryProvided: string = '';
 
 const quoted = /^'[^']*'|"[^"]*"$/;
+
+state.set = { deptree: {}, prebuildDone: false};
 
 liquidEngine.registerTag('section', {
   parse: function (token) {
@@ -194,46 +200,132 @@ export async function generateAllScripts ()
 {
   const { isTheme, themeDirectory, folders, workspaceFolders } = await getThemeDirectory();
   if (!isTheme || !themeDirectory) { return; }
-  const templates = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates'));
+  let templates = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates'));
+  const layouts = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout'));
   const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
+ // @ts-ignore
+ templates = await Promise.all(templates.map(async template => template[1] === 2 ? (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates', template[0]))).map(file => [`${template[0]}/${file[0]}`, file[1]]) : template));
+ // flatten array
+ templates = templates.reduce((acc, val) => Array.isArray(val[0]) ? [...acc, ...val] : [...acc, val], []);
 
-  await Promise.all(templates.filter(e => e[1] === 1).map(async template =>
+    state['buildErrors'] = [];
+    state['buildWarnings'] = [];
+
+    await doBuildAllTemplateOutputs();	
+
+  async function doBuildAllTemplateOutputs ()
   {
-    try {
-      await generateTemplateScript(vscode.Uri.joinPath(templatesFolder, template[0]), template[0], themeDirectory);
-    } catch (err) {
-      console.log('error generating template script', err);
-    }
-  })).catch(err =>
-  {
-    console.log('error filtering templates', err);
-  });
+    await Promise.all(templates.filter(e => e[1] === 1).map(async template =>
+    {
+      try {
+        await generateTemplateScript(template[0], false);
+      } catch (err) {
+        console.log('error generating template script', err);
+      }
+    })).catch(err =>
+    {
+      console.log('error filtering templates', err);
+    });
+  
+    await Promise.all(layouts.filter(e => e[1] === 1).map(async template =>
+    {
+      try {
+        await generateTemplateScript(template[0], true);
+      } catch (err) {
+        console.log('error generating template script', err);
+      }
+    })).catch(err =>
+    {
+      console.log('error filtering templates', err);
+    });
+  }
 }
-
-export async function generateTemplateScript (template: vscode.Uri, templateName: string, themeDirectoryProvided: string)
+async function _generateIncludeScripts ({themeDirectory})
 {
+  await Promise.all(Object.keys(state.layouts).map(async layoutname =>
+    {
+    const layouts = state.layouts;
+    const templates = state.templates;
+    const layoutContents = state.layoutContents;
+    const layout = state.layouts[layoutname];
+    const layoutContent = state.layoutContents[layoutname];
+    if(!layoutContent) { return; }
+    
+    let [beforeComment, afterComment] = layoutContent.split('<!-- liquivelte includes -->');
+    let [includeContent, afterInclude] = afterComment.split(/<\!--\s*liquivelte\s*includes\s*end\s*-->/);
+
+    const newContent = `${beforeComment}<!-- liquivelte includes -->
+    {% assign templatesWithLiquivelte = '${
+      Object.keys(state.templates)
+      .filter(temp => state.templates[temp].hasIncludes).map(temp => temp.replace(/\.[^\.]+$/, '').replace('/', '-')).join(',')}' | split: ',' %}
+    {% assign template_with_suffix_and_directory = template %}
+    {% if template.directory %}
+      {% assign template_with_suffix_and_directory = template.directory | append: '-' | append: template_with_suffix_and_directory %}
+      {% endif %}
+      {% if template.suffix != blank %}
+      {% assign template_with_suffix_and_directory = template_with_suffix_and_directory | append: '.' | template.suffix %}
+    {% endif %}
+    {% if templatesWithLiquivelte contains template_with_suffix_and_directory %}
+      {% assign liquivelte_js_source = template_with_suffix_and_directory | append: '.liquivelte.js' %}
+      {% assign liquivelte_css_source = template_with_suffix_and_directory | append: '.liquivelte.css' %}
+      <script src="{{ liquivelte_js_source | asset_url }}" defer="defer"></script>
+      <link rel="stylesheet" href="{{ liquivelte_css_source | asset_url }}" />
+      {% endif %}
+      ${layouts[layoutname].hasIncludes ? `
+      <script src="{{ '${layoutname}.liquivelte.js' | asset_url }}" defer="defer"></script>
+      <link rel="stylesheet" href="{{ '${layoutname}.liquivelte.css' | asset_url }}" />
+    ` : ''}
+    <!-- liquivelte includes end -->${afterInclude}`;
+
+    if (newContent === layoutContent) { return; }
+    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout', layoutname), Buffer.from(newContent));
+    return;
+  }));
+} 
+const generateIncludeScripts = debounce(_generateIncludeScripts, 500);
+
+export async function generateTemplateScript (templateName: string, isLayout: boolean)
+{
+  const { isTheme, themeDirectory, folders, workspaceFolders } = await getThemeDirectory();
+  const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
+  const layoutsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout');
+
+  const template = vscode.Uri.joinPath(isLayout ? layoutsFolder : templatesFolder, templateName);
   state.set = { [templateName]: { loading: false } };
-
+  
   try {
-    const allIncludes = await getAllIncludes(templateName, template, themeDirectoryProvided);
-
+    const allIncludes = await getAllIncludes(templateName, template, themeDirectory);
+    const templateNameRaw = templateName;
+    templateName = templateName.replace(/\//, '-');
     // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
-
-    let svelteIncludes = allIncludes.includes.filter(e => e.file === 'svelte' || e.name === 'section');
-    if (svelteIncludes.length === 0) { return 1; }
+   
+    let svelteIncludes = allIncludes.includes.filter(e => e.file === 'liquivelte' || (e.name === 'section' && allIncludes.liquivelteSections.includes(`${e.file}.liquivelte`)));
+    if (svelteIncludes.length === 0) {
+      if (isLayout) {
+        state.layouts[templateNameRaw].hasIncludes = false;
+      } else {
+        state.templates[templateNameRaw].hasIncludes = false;
+      }
+      return 0;
+    }
       svelteIncludes = svelteIncludes.map(e =>
       {
         let module = '';
         try {
           module = e.hash.module.input.match(/'([^']+)'/)[1];
         } catch (error) {
-          console.log('Could not get module in svelte include');
+          console.log('Could not get module in liquivelte include');
         }
 
         return { ...e, module };
       });
       
-      console.log(templateName, 'has Svelte includes ', svelteIncludes, allIncludes);
+      if (isLayout) {
+        state.layouts[templateNameRaw].hasIncludes = true;
+      } else {
+        state.templates[templateNameRaw].hasIncludes = true;
+      }
+      console.log(templateName, 'has Liquivelte includes ', svelteIncludes, allIncludes);
       const templateNameWithoutExtension = templateName.replace(/\.(liquid|json)/g, '');
     /*
     * Generate the script for the template
@@ -245,34 +337,47 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
     await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
     // see below for details on these options
+    const production = state['buildConfig'].minify;
       const inputOptions = {
         input: entryPath.fsPath,
         plugins: [
           liquivelteSveltePlugin({
+            preprocess: preprocess(),
             emitCss: true
           }),
           svelte({
+            preprocess: preprocess(),
             compilerOptions: {
                 hydratable: true,
                 css: false,
               },
             emitCss: true
           }),
-          css({ output: `${templateName}.css` }),
+          // (state['buildConfig'].is_scss ?
+          //   scss({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }) :
+          //   css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` })),
+          css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }),
           liquivelteLiquidPlugin({
-            themePath: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided).fsPath,
+            themePath: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory).fsPath,
           }),
           resolve({
             browser: true,
           }),
           commonjs(),
-          // terser({
-          //   module: true,
-          //   compress: { join_vars: false, collapse_vars: false, dead_code: false, drop_console: true, unused: false },
-          //   mangle: { keep_fnames: true, keep_classnames: true },
-          //   output: { beautify: false, quote_style: 3 },
-          //   parse: {},
-          // })
+          (state['buildConfig'].is_ts &&
+            typescript({
+              sourceMap: !production,
+              inlineSources: !production
+            })  
+          ),
+          (!state['watching'] &&
+          terser({
+            module: true,
+            compress: { join_vars: false, collapse_vars: false, dead_code: false, drop_console: true, unused: false },
+            mangle: { keep_fnames: true, keep_classnames: true },
+            output: { beautify: false, quote_style: 3 },
+            parse: {},
+          }))
         ],
         onwarn: (warning, warn) =>
         { 
@@ -288,16 +393,25 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
         sourcemap: false,
         name: 'theme.liquivelte.' + templateName.replace('.liquid', ''),
         format: 'iife',
-        file: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided, 'assets', `${templateName}.js`).fsPath,
-        
+        file: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets', `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.js`).fsPath,
       }];
 
       state[templateName] = { loading: true };
-
+      
+      state['prebuildDone'] = false;
       await build();
+      state['prebuildDone'] = true;
+      await build();
+      
+      state.preprocess_results_cache = new Map;
+      state.liquivelte_imports_cache = new Map;
+      state.theme_imports_cache = new Map;
+      state.main_imports_cache = new Map;
   
       state[templateName] = { loading: false };
-
+    
+      await generateIncludeScripts({themeDirectory});
+      
       async function build ()
       {
         let bundle;
@@ -308,12 +422,14 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
   
           // an array of file names this bundle depends on
           // console.log(bundle.watchFiles);
-  
+          state['deptree'][templateName] = bundle.watchFiles.filter(e => !e.includes('node_modules'));
+
           await generateOutputs(bundle);
         } catch (error) {
           buildFailed = true;
           // do some error reporting
-          console.error('build error', error);
+          state['buildErrors'] = [...state['buildErrors'], JSON.parse(JSON.stringify(error))];
+          // console.error('build error', error);
         }
         if (bundle) {
           // closes the bundle
@@ -325,48 +441,14 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
       async function generateOutputs (bundle)
       {
         for (const outputOptions of outputOptionsList) {
-          // generate output specific code in-memory
-          // you can call this function multiple times on the same bundle object
-          // replace bundle.generate with bundle.write to directly write to disk
           const { output } = await bundle.write(outputOptions);
   
           for (const chunkOrAsset of output) {
             if (chunkOrAsset.type === 'asset') {
-              // For assets, this contains
-              // {
-              //   fileName: string,              // the asset file name
-              //   source: string | Uint8Array    // the asset source
-              //   type: 'asset'                  // signifies that this is an asset
-              // }
+          
               console.log('Asset', chunkOrAsset);
             } else {
-              // For chunks, this contains
-              // {
-              //   code: string,                  // the generated JS code
-              //   dynamicImports: string[],      // external modules imported dynamically by the chunk
-              //   exports: string[],             // exported variable names
-              //   facadeModuleId: string | null, // the id of a module that this chunk corresponds to
-              //   fileName: string,              // the chunk file name
-              //   implicitlyLoadedBefore: string[]; // entries that should only be loaded after this chunk
-              //   imports: string[],             // external modules imported statically by the chunk
-              //   importedBindings: {[imported: string]: string[]} // imported bindings per dependency
-              //   isDynamicEntry: boolean,       // is this chunk a dynamic entry point
-              //   isEntry: boolean,              // is this chunk a static entry point
-              //   isImplicitEntry: boolean,      // should this chunk only be loaded after other chunks
-              //   map: string | null,            // sourcemaps if present
-              //   modules: {                     // information about the modules in this chunk
-              //     [id: string]: {
-              //       renderedExports: string[]; // exported variable names that were included
-              //       removedExports: string[];  // exported variable names that were removed
-              //       renderedLength: number;    // the length of the remaining code in this module
-              //       originalLength: number;    // the original length of the code in this module
-              //       code: string | null;       // remaining code in this module
-              //     };
-              //   },
-              //   name: string                   // the name of this chunk as used in naming patterns
-              //   referencedFiles: string[]      // files referenced via import.meta.ROLLUP_FILE_URL_<id>
-              //   type: 'chunk',                 // signifies that this is a chunk
-              // }
+            
               console.log('Chunk', chunkOrAsset);
             }
           }
@@ -378,9 +460,10 @@ export async function generateTemplateScript (template: vscode.Uri, templateName
     }
 }
 
-export async function getAllIncludes (templateName: string, firstFile: vscode.Uri, themeDirectoryProvided: string)
+export async function getAllIncludes (templateName: string, firstFile: vscode.Uri, themeDirectoryProvided: string, followIncludes: boolean = true)
 {
     let allIncludes = [];
+    const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
     async function getIncludes (file: vscode.Uri)
     {
       try {
@@ -395,7 +478,6 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
           /*******************************************************
            * IF IT IS A LIQUIVELTE SECTION WE MAKE IT AN INCLUDE *
            *******************************************************/
-          const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
           let sectionIncludes = sections.filter(section =>
           {
             // @ts-ignore
@@ -428,7 +510,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
           return [...col, block, ...branchTemplates, ...(block.impl?.templates || [])];
         }, [])
           // @ts-ignore
-          .filter(block => block.constructor.name === 'Tag' && (block.name === 'section' || block.name === 'include'))
+          .filter(block => block.constructor.name === 'Tag' && ((block.name === 'section' && liquivelteSections.indexOf(`${block.impl.namestr.replace(/'/g, '')}.liquivelte`) !== -1) || block.name === 'include'))
           // @ts-ignore
           .map(include =>
           {
@@ -452,7 +534,10 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
             }
             const includeUri = vscode.Uri.joinPath(include.name === 'section' ? sectionsFolder : snippetsFolder, `${include.file.replace(/^["']|["']$/gi, '')}.liquid`);
             // console.log('calling sub include', includeUri.path.split('/').pop());
-            await getIncludes(includeUri);
+           
+            if (followIncludes) {
+              await getIncludes(includeUri);
+            }
           }));
         }
       } catch (err) {
@@ -462,8 +547,12 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
   
     await getIncludes(firstFile);
   
+    let svelteIncludes = allIncludes.filter(e => e.file === 'liquivelte' || (e.name === 'section' && liquivelteSections.includes(`${e.file}.liquivelte`)));
+
     return {
       template: templateName,
-      includes: allIncludes
+      includes: allIncludes,
+      liquivelteSections,
+      hasIncludes: !!svelteIncludes.length,
     };
 }

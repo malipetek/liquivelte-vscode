@@ -36,8 +36,8 @@ export const liquivelteProvider = new class implements vscode.TextDocumentConten
 			const { content, map, replaceOperations } = await liquivelteTransformer(text, actualUri);
       const parsedPath = path.parse(actualUri.fsPath);
       
-      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'src', '.svelte'));
-			await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'src', '.svelte', `${parsedPath.name}.liquivelte`), Buffer.from(content));
+      // await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'src', '.svelte'));
+			// await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'src', '.svelte', `${parsedPath.name}.liquivelte`), Buffer.from(content));
       state['openPreviews'][uri.fsPath] = replaceOperations;
 
 			return content;

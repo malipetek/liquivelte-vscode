@@ -1,70 +1,81 @@
-# liquivelte README
+# Liquivelte
 
-This is the README for your extension "liquivelte". After writing up a brief description, we recommend including the following sections.
+> Create your Shopify theme with Svelte like components!
 
-## Features
+Liquivelte is a preprocessor and some utilities to generate compiled code and liquid content to enable SSR for data that is available in the Liquid context.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+This plugin carries out a rollup build process in the background and generates necessary JS, CSS and Liquid content. Please be aware of file changes to your existing theme.
 
-For example if there is an image subfolder under your extension project workspace:
+## Why
+Because we love SvelteJS ♥️
 
-\!\[feature X\]\(images/feature-x.png\)
+## How
+For every template/layout, we check for liquivelte includes and generate **JS** and **CSS** per file. This means on any page on store front we can have 2 entry points. For example you included 4 snippets with liquivelte format on the product template and you have 1 on the layout containing it. Then still 2 bundles will be included but one of them will initialize 4 modules and other will init 1.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+We convert import statements from theme to prop imports for main components. We use same data for generating liquid content that will hopefully generate html to be hydrated by **SvelteJS**.
 
-## Requirements
+# Examples
+```
+<script>
+  import product from 'theme';
+  import product.title from 'theme';
+  import ProductTitle from './folder/product-title.liquivelte';
+  import Badge from './badge.liquivelte';
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+</script>
 
-## Extension Settings
+<ProductTitle bind:title="{title}">
+    {% if product.available %}
+      <Bagde> Available </Bagde>
+    {% endif %}
+</ProductTitle>
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+{% for image in product.images %}
+  <div class="icon"> 
+    {% include 'icon-pin' %}
+  </div> 
+{% endfor %}
 
-For example:
+<form class="form" prop="product" type="product" product >
+  <div class="icon">
+    {% include 'icon-close' %}
+  </div>
+  <input bind:value="{title}" type="text" />
+  <input type="button" value="Add to cart" on:click="{ () => window.alert('hydrated') }" />
+  <button type="button" on:click="{alertValue}"> Click Meh </button>
+</form>
 
-This extension contributes the following settings:
+<style lang="scss">
+  .icon { 
+      width: 20px; 
+    }
+  input[text] {
+    border: 1px solid olivedrab;  
+  }
+  form {
+    border: 1px solid red;
+  }
+</style>
+```
+## How to include
+- We can include a snippet with this syntax `{% include 'liquivelte', module: '[module_name]' %}`
+- We can include sections as usual, we will check if it is in `src/sections` folder.
+## Can do's
+- ✅ We can import json serializable liquid objects with `import [__] from 'theme';` syntax
+- We can import liquid object props with `import [__].[__] from 'theme;` syntax
 
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
+- ✅ We can use liquid expression with dashes `{{- [__] -}}`
+This is because we can not determine if it is a **SvelteJS** expression with an object declaration or a liquid output.
 
-## Known Issues
+- ✅ We can include a form with type and prop, prop is for example product in the form type 'product'.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- ✅ We can include other snippets with `{% include '[__]' %}` syntax as usual.
 
-## Release Notes
+- ✅ We can use control flow tags `{% if %}`, `{% else %}`, `{% elsif %}`, `{% endif %}`, `{% for %}`, `{% endfor %}``
 
-Users appreciate release notes as you update your extension.
+## What we can not do
+- ❌ We can not use `{{ [__] }}` syntax.
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
------------------------------------------------------------------------------------------------------------
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-**Note:** You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+CMD+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux) or `Cmd+Space` (macOS) to see a list of Markdown snippets
-
-### For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- ❌ We can not use `{% render %}`
+- ❌ We can not have folders in sections folder.
+- ❌ We can not use `with` when including liquivelte snippet : `{% include 'liquivelte' with module: '[module_name]' %}`

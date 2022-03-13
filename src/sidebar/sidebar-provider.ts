@@ -4,8 +4,32 @@ export const apiBaseUrl = "http://localhost:3002";
 import getThemeDirectory from "../utils/get-theme-directory";
 import { generateAllScripts } from '../generate-theme/process-theme';
 import { activeFileChangeHandler } from '../utils/state-change-handlers';
+import { startWatch, endWatch } from "../utils/watcher";
+import debounce from 'debounce-async';
+export const sendStatsDebounced = debounce(sendStats, 1000);
+import { exec } from "child_process";
 import state from "../utils/state";
-
+function execAsync (cmd)
+{
+  return new Promise((res, rej) =>
+  {
+    let stdOut = '';
+    let stdErr = '';
+    const proc = exec(cmd, (err, stdout, stderr) =>
+    {
+      stdOut += stdout;
+      stdErr += stderr;
+      if (err) {
+        rej(err);
+      }
+    });
+    // resolve upon process end
+    proc.on('close', () =>
+    {
+      res(stdOut);
+    });
+  });
+}
 function tryJSONParse (str: string)
 {
   let parsed = {};
@@ -19,6 +43,38 @@ function tryJSONParse (str: string)
   }
   return parsed;
 }
+export async function sendStats ()
+      {
+        const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder, templates, layouts } = await getThemeDirectory();
+  if (state['sidebar'].webview) {
+    state['sidebar'].webview.postMessage({
+      type: "stats",
+      stats: {
+        srcFolder,
+        presetsSame,
+        validTheme: isTheme,
+        themeFolder: themeDirectory,
+        templates,
+        layouts,
+        configFile,
+        data: state.data,
+        watching: state['watching'],
+        buildConfig: state['buildConfig'],
+      },
+    });
+
+    state['sidebar'].webview.postMessage({
+      type: "build-warnings",
+      data: state['buildWarnings']
+    });
+
+    if (state['openEditor'] && state['sidebar'].webview) {
+      activeFileChangeHandler(state['openEditor']);
+    }
+  }
+
+}
+
 export class SidebarProvider implements vscode.WebviewViewProvider {
   _view?: vscode.WebviewView;
   _doc?: vscode.TextDocument;
@@ -41,39 +97,17 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
       webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
       
+      
       webviewView.webview.onDidReceiveMessage(async (data) => {
         
         switch (data.type) {
           case "get-stats": {
-            const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder, templates } = await getThemeDirectory();
-
-            webviewView.webview.postMessage({
-              type: "stats",
-              stats: {
-                srcFolder,
-                presetsSame,
-                validTheme: isTheme,
-                themeFolder: themeDirectory,
-                templates,
-                configFile,
-                data: state.data
-              },
-            });
-
-            state['sidebar'].webview.postMessage({
-              type: "build-warnings",
-              data: state['buildWarnings']
-            });
-
-            if (state['openEditor'] && state['sidebar'].webview) {
-              activeFileChangeHandler(state['openEditor']);
-            }
-
+            await sendStats();
             break;
           }
           case 'get-translations': {
             const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder } = await getThemeDirectory();
-
+            if (!isTheme) return;
             const localeFolders = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'locales'));
             
             const sectionTranslations = {};
@@ -109,8 +143,6 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
           }
           case 'regenerate-theme': { 
-            const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder } = await getThemeDirectory();
-
             await generateAllScripts();
             break;
           }
@@ -141,8 +173,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
           }
           case "start-watch": {
-              
-              break;
+              startWatch();
+            break;
+          }
+          case "end-watch": { 
+              endWatch();
+            break;
           }
           case 'open-folder': {
             const uri = vscode.Uri.parse(data.link);
@@ -163,22 +199,154 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
           }
             
-          case 'save-schema': {
-            
-            break;
-          }          
-          case "onInfo": {
-            if (!data.value) {
-              return;
-            }
-            vscode.window.showInformationMessage(data.value);
+          case 'set-build-config': {
+            state['buildConfig'] = data.buildConfig;
             break;
           }
-          case "onError": {
-            if (!data.value) {
-              return;
+          case 'create-folder': {
+            await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.folder));
+            break;
+          }
+          case 'create-file': {
+            const { themeDirectory } = await getThemeDirectory();
+            if (data.file === 'config.yml') {
+              await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.file),
+              Buffer.from(`development:
+              password: [shptka_...]
+              theme_id: "[theme_id]"
+              store: liquivelte.myshopify.com
+              directory: ${themeDirectory || '.'}`));
             }
-            vscode.window.showErrorMessage(data.value);
+            if (data.file === 'src/liquid.js') {
+              await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.file),
+                Buffer.from(`
+              const num = (n) => {
+                if (n.aspect_ratio) {
+                    n = n.aspect_ratio;
+                }
+                return n;
+              }
+              
+              function isValidHttpUrl(string) {
+                let url;
+                string = string.replace(/^\\/\\//, 'https://');
+                try {
+                  url = new URL(string);
+                } catch (_) {
+                  return false;  
+                }
+              
+                return url.protocol === "http:" || url.protocol === "https:";
+              }
+              function handleize(str) {
+                str = str.toLowerCase();
+              
+                var toReplace = ['"', "'", "\\\\", "(", ")", "[", "]"];
+              
+                // For the old browsers
+                for (var i = 0; i < toReplace.length; ++i) {
+                  str = str.replace(toReplace[i], "");
+                }
+              
+                str = str.replace(/\\W+/g, "-");
+              
+                if (str.charAt(str.length - 1) == "-") {
+                  str = str.replace(/-+\\z/, "");
+                }
+              
+                if (str.charAt(0) == "-") {
+                  str = str.replace(/\\A-+/, "");
+                }
+              
+                return str;
+              };
+              
+              export default {
+                default: (input, fallback) => {
+                    let isObject = false;
+                    try { isObject = input.constructor === {}.constructor; } catch (err) {}
+                    if (input == 'undefined' || input == 'null' || input == '[]' || input == '[Object]') {
+                        return fallback || '';
+                    } else if (input && (input.length || isObject)) {
+                        return input;
+                    } else {
+                        return fallback || '';
+                    }
+                },
+                append: (input, str) => input + str + "",
+                img_url: (input, size) => {
+                    // console.log('img url');
+                    if (!input) { 
+                        return input = \`//cdn.shopify.com/shopifycloud/shopify/assets/no-image-2048-5e88c1b20e087fb7bbe9a3771824e743c244f437e4f8ba93bbf7b11b53f7824c.gif\`;
+                    }
+                    if (input.src) {
+                        input = input.src;
+                    }
+                    if (input.image) {
+                        input = input.image;
+                    }
+                    if (input.constructor !== String) {
+                        return input = \`//cdn.shopify.com/shopifycloud/shopify/assets/no-image-2048-5e88c1b20e087fb7bbe9a3771824e743c244f437e4f8ba93bbf7b11b53f7824c.gif\`;
+                    }
+                    /* if (/_(lg|md|sm)_/.test(input)) {
+                        return input.replace(/_(lg|mg|sm)_/, \`_$1_\${size}_\`);
+                    } else if (/_(lg|md|sm)/.test(input)) {
+                        return input.replace(/_(lg|mg|sm)/, \`_$1_\${size}\`);
+                    } else {
+                    } */
+                    if(!isValidHttpUrl(input)) {
+                        input = \`https://cdn.shopify.com/s/files/1/0621/4444/6683/\${input}\`;
+                    }
+                    return input.replace(/\\.([^\\.]+)($|\\?)/, \`_\${size}.$1?\`);
+                },
+                money: (input) => {
+                    input = String(input);
+                    if (isNaN(parseInt(input))) {
+                        return \`$0.00\`;
+                    }
+                    if (input.length > 2) {
+                        return \`$\${((+input.slice(0, -2)).toLocaleString())}.\${input.slice(-2)}\`;
+                    } else {
+                        return \`$\${input}\`;
+                    }
+                },
+                capitalize: (input) => (input[0].toUpperCase() + input.slice(1)),
+                divided_by: (input, n) => (num(input) / num(n)),
+                times: (input, n) => (num(input) * num(n)),
+                escape: (input) => escape(input),
+                replace: (input, rep, tar) => {
+                    return input.replace(new RegExp(rep), tar);
+                },
+                within: (url, collection) => {
+                    return \`/collections/\${collection.handle}/\${url}\`
+                },
+                split: (input, splitter) => input.split(splitter),
+                first: (input) => input[0],
+                last: (input) => input[input.length - 1],
+                link_to_tag: (tag) => {
+                    const u = new URL(window.location.href);
+                    return \`<a href="\${u.protocol}//\${u.host}\${u.pathname}/\${tag}"> \${tag} </a>\`;
+                },
+                crop: (input, cropType) => {
+                    return input.replace(/\\.([^\\.]+)[$\\?]/, \`_crop_\${cropType}.$1?\`);
+                },
+                plus: (input) => +input + 1,
+                minus: (input) => +input - 1,
+                scale: (input, scale) => {
+                    return input.replace(/\\.([^\\.]+)[$\\?]/, \`@\${scale}x.$1?\`);
+                },
+                handleize,
+                json: (input) => JSON.stringify(input),
+                date: x => x
+              }`));
+              
+            }
+            break;
+          }
+          case 'clone-theme': {
+            const terminal = vscode.window.createTerminal({});
+            terminal.sendText(`git clone https://github.com/malipetek/liquivelte-theme.git theme`);
+            terminal.show();
             break;
           }
         }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
@@ -16,9 +17,9 @@ state.set = {
 	openEditor: vscode.window.activeTextEditor,
 	openPreview: '',
 	sidebar: '',
-	templates: [],
 	buildErrors: [],
-	buildWarnings: []
+	buildWarnings: [],
+	buildConfig: {},
 };
 
 // this method is called when your extension is activated
@@ -56,6 +57,15 @@ export async function activate (context: vscode.ExtensionContext)
 			state['sidebar'].webview.postMessage({
 				type: "build-warnings",
 				data: warnings
+			});
+		}
+	};
+	state.watch['buildErrors'] = (errors: any) =>
+	{
+		if(state['sidebar'].webview) {
+			state['sidebar'].webview.postMessage({
+				type: "build-errors",
+				data: errors
 			});
 		}
 	};
@@ -147,13 +157,14 @@ export async function activate (context: vscode.ExtensionContext)
 
 				// openEditor.setDecorations(vscode.window.createTextEditorDecorationType({}), []);
 
-				if (currentOperation) {
-					replaceOperations.forEach(op => op.active = false);
-					currentOperation.active = true;
-					triggerUpdateDecorations(replaceOperations);
-				} else {
-					triggerUpdateDecorations([]);
-				}
+				// TODO: there is an issue with prepended expressions they break everything
+				// if (currentOperation) {
+				// 	replaceOperations.forEach(op => op.active = false);
+				// 	currentOperation.active = true;
+				// 	triggerUpdateDecorations(replaceOperations);
+				// } else {
+				// 	triggerUpdateDecorations([]);
+				// }
 
 				// decoType.dispose();
 
@@ -169,9 +180,10 @@ export async function activate (context: vscode.ExtensionContext)
 
 				// openEditor.setDecorations(decoType, [new vscode.Range(new vscode.Position(line, character), new vscode.Position(line, character))]);
 
-				const startPos = new vscode.Position(line, character);
-				const endPos = new vscode.Position(endLine, endCharacter);
-				state['openEditor'].revealRange(new vscode.Range(startPos, endPos), 1);
+				// revealing position causes unwanted line selections
+				// const startPos = new vscode.Position(line, character);
+				// const endPos = new vscode.Position(endLine, endCharacter);
+				// state['openEditor'].revealRange(new vscode.Range(startPos, endPos), 1);
 			}
 		});
 	}));

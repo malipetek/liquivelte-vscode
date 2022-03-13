@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { _Connection, TextDocumentIdentifier, Diagnostic } from 'vscode-languageserver';
 import { DocumentManager, Document } from './documents';
 

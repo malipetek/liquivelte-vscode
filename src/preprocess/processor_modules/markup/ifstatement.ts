@@ -64,7 +64,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     });
 
     return '';  });
-  markup.replace(/\{%-*\s*else\s*-*%\}$/gim, (a, offset) =>
+  markup.replace(/\{%-*\s*else\s*-*%\}/gim, (a, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
 
@@ -120,7 +120,14 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     return '';
   });
 
-  markup.replace(/\{%-*\s*endfor\s*-*%\}$/gim, (a, offset) =>
+  liquidContent = liquidContent.replace(/\{%-*\s*for\s*(.*?)\s*in(.*?)\s*-*%\}/gim, (a, item, arr, offset) =>
+  { 
+    return `${a}
+    {% assign index = forloop.index0 %}`;
+  });
+
+
+  markup.replace(/\{%-*\s*endfor\s*-*%\}/gim, (a, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
     ms.overwrite(offset, offset + a.length, '{/each}');
