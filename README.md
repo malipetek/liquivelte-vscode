@@ -1,6 +1,8 @@
+<img alt="liquivelte icon" src="media/liquivelte-icon.png" width="100px" />
+
 # Liquivelte
 
-> Create your Shopify theme with Svelte like components!
+Create your Shopify theme with Svelte like components!
 
 Liquivelte is a preprocessor and some utilities to generate compiled code and liquid content to enable SSR for data that is available in the Liquid context.
 
