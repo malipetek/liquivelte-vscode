@@ -68,9 +68,6 @@ export default async function ()
     let layoutsArr = await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout'));
     let snippets = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'snippets'))).map(snippet => snippet[0]);
 
-    if (!snippets.includes('dummy.liquid')) {
-      await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'snippets', 'dummy.liquid'), Buffer.from('{% comment %} dummy {% endcomment %}'));
-    }
     if (!snippets.includes('liquivelte.liquid')) {
       await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'snippets', 'liquivelte.liquid'), Buffer.from(
 ` {% comment %}

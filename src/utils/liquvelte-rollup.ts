@@ -10,7 +10,6 @@ import { compile, preprocess } from 'svelte/compiler';
 import addCssClassesToLiquid from "./inject-liquid-classes";
 import toCamelCase from './to-camel-case';
 import state from './state';
-import { getAllIncludes } from '../generate-theme/process-theme';
 
 state.set = { incl_tree: {} };
 const PREFIX = '[rollup-plugin-liquivelte]';
@@ -405,6 +404,7 @@ endfor
 							// console.log(dynamicOrRegularClass);
 							// console.log(className);
 							// console.log(expression);
+							expression = expression.replace(/(\{\{-?)|(-?\}\})/g, '').trim();
 							if (className) {
 								dynamicClasses[expression] = className;
 							}

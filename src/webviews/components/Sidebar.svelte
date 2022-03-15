@@ -103,7 +103,7 @@
   }
   onMount(async () => {
     window.addEventListener("message", async (event) => {
-      // console.log("webview message ", event.data);
+      console.log("webview message ", event.data);
       const message = event.data;
       switch (message.type) {
         case "stats":
@@ -530,7 +530,7 @@
                     <Filelink href="{stats.themeFolder}/layout/{layout}">
                       {layout}
                     </Filelink>
-                    {#if stats.layouts[layout].includes.filter((incl) => incl.file === "liquivelte" || incl.name === "section").length}
+                    {#if stats.layouts[layout].hasIncludes}
                       {#if stats.layouts[layout].loading}
                         <div class="spinner" />
                       {:else}
@@ -579,7 +579,7 @@
                     <Filelink href="{stats.themeFolder}/templates/{template}">
                       {template}
                     </Filelink>
-                    {#if stats.templates[template].includes.filter((incl) => incl.file === "liquivelte" || incl.name === "section").length}
+                    {#if stats.templates[template].hasIncludes}
                       {#if stats.templates[template].loading}
                         <div class="spinner" />
                       {:else}

@@ -7,8 +7,7 @@ import { sendStatsDebounced } from '../sidebar/sidebar-provider';
 
 state.set = { watching: false };
 let fileWatcher: vscode.FileSystemWatcher | undefined;
-let templatesWatcher: vscode.FileSystemWatcher | undefined;
-let layoutsWatcher: vscode.FileSystemWatcher | undefined;
+let themeWatcher: vscode.FileSystemWatcher | undefined;
 
 state.until['watching'] = () =>
 {
@@ -73,19 +72,14 @@ export async function startWatch ()
 
   });
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) {
-    templatesWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory), 'templates/**'));
-    templatesWatcher.onDidChange(async (uri: vscode.Uri) => { await sendStatsDebounced(); });
-  }
-  if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) {
-    layoutsWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory), 'layout/**'));
-    layoutsWatcher.onDidChange(async (uri: vscode.Uri) => { await sendStatsDebounced(); } );
+    themeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.workspaceFolders[0].uri, `${themeDirectory}/**`));
+    themeWatcher.onDidChange(async (uri: vscode.Uri) => { await sendStatsDebounced(); });
   }
 }
 
 export function endWatch ()
 {
   fileWatcher?.dispose();
-  templatesWatcher?.dispose();
-  layoutsWatcher?.dispose();
+  themeWatcher?.dispose();
   state['watching'] = false;
 }
