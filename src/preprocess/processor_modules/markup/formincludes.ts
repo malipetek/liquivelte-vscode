@@ -18,6 +18,8 @@ export default function formProcessor (markup: string, ms: MagicString, { replac
         type = t;
         return ``;
       });
+    } else {
+      return 'we leave regular forms alone';
     }
     if (hasProp) {
       content = content.replace(/\prop="([^"]+)"/gim, (a, t) => {

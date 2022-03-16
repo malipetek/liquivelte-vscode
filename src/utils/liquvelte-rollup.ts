@@ -211,7 +211,6 @@ export function liquivelteSveltePlugin (options = {})
 				cache_emit.set(fname, compiled.css);
 			}
 
-
 			const liquidfname = id.replace(new RegExp(`\\${extension}$`), '.liquid');
 			const liquidContent = result?.liquidContent;
 			compiled.js.code += `\nimport ${JSON.stringify(liquidfname)};\n`;

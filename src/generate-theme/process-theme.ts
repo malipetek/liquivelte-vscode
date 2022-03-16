@@ -1,5 +1,3 @@
-import { Liquid, LiquidError, TagToken, Context, Emitter, TopLevelToken, Template } from 'liquidjs';
-const liquidEngine = new Liquid();
 import * as vscode from 'vscode';
 import toCamelCase from '../utils/to-camel-case';
 import getThemeDirectory from '../utils/get-theme-directory';
@@ -17,6 +15,10 @@ import { liquivelteLiquidPlugin, liquivelteSveltePlugin } from '../utils/liquvel
 import path from 'path';
 import state from '../utils/state';
 import debounce from 'debounce-async';
+const tailwind = require("tailwindcss");
+const autoprefixer = require("autoprefixer");
+const postcssimport = require('postcss-import');
+const tailwindcssNesting = require('tailwindcss/nesting');
 
 const { workspaceFolders } = vscode.workspace;
 
@@ -25,143 +27,6 @@ let themeDirectoryProvided: string = '';
 const quoted = /^'[^']*'|"[^"]*"$/;
 
 state.set = { deptree: {}, prebuildDone: false};
-
-liquidEngine.registerTag('section', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    const sectionsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectoryProvided, 'sections');
-
-    let name;
-    if (quoted.exec(this.namestr)) {
-      const template = this.namestr.slice(1, -1);
-      name = await this.liquid.parseAndRender(template, ctx.getAll(), ctx.opts);
-    }
-    if (!name) { throw new Error(`cannot include with empty filename`); }
-
-    const filepath = vscode.Uri.joinPath(sectionsFolder, name);
-    const templates = await vscode.workspace.fs.readFile(filepath);
-    const parsed = await liquidEngine.parse(templates.toString());
-    return this.liquid.render(parsed);
-  }
-});
-
-const include = liquidEngine.tags.get('include')
-const include_parse = include.parse;
-// @ts-ignore
-const include_parseFilePath = include.parseFilePath;
-// @ts-ignore
-const include_renderFilePath = include.renderFilePath;
-const include_render = include.render;
-
-// @ts-ignore
-include.parseFilePath = function (tokenizer, liquid)
-{
-  // console.log('parseFilePath ', tokenizer.input);
-  if (/module\s/.test(tokenizer.input)) {
-    return 'dummy';
-  }
-  return include_parseFilePath.apply(this, arguments);
-};
-
-liquidEngine.registerTag('paginate', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-liquidEngine.registerTag('endpaginate', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('form', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('endform', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('schema', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('endschema', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('layout', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('style', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('endstyle', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('javascript', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
-
-liquidEngine.registerTag('endjavascript', {
-  parse: function (token) {
-    this.namestr = token.args;
-  },
-  render: async function (ctx, hash) {
-    return '';
-  }
-});
 
 async function generateEntryScript (svelteIncludes: parsedToken[]): Promise<string>
 {
@@ -325,17 +190,78 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
     const entryContent = await generateEntryScript(svelteIncludes);
     await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
+
     // see below for details on these options
-    const production = state['buildConfig'].minify;
-      const inputOptions = {
+    const production = !state['watching'];
+    const tailwindOptionsSvelte = {
+      future: {
+        purgeLayersByDefault: true,
+        removeDeprecatedGapUtilities: true,
+      },
+      plugins: [
+    
+      ],
+      purge: {
+        content: [
+          vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath  + "/**/*.svelte",
+    
+        ],
+        enabled: !production
+      },
+    };
+    const purgePath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath + "/**/*.liquivelte";
+    const tailwindOptionsLiquivelte = {
+      future: {
+        purgeLayersByDefault: true,
+        removeDeprecatedGapUtilities: true,
+      },
+      plugins: [
+    
+      ],
+      purge: {
+        content: [
+          purgePath,
+        ],
+        enabled: production
+      },
+    };
+    
+  const autoPrefixerOptions = {
+  
+  };
+   
+    const postcssImport = postcssimport({
+      root: path.resolve(__dirname),
+    });
+    const liquiveltePreprocessor = preprocess({
+      postcss: {
+        plugins: [
+          postcssImport,
+          tailwindcssNesting,
+          tailwind(tailwindOptionsLiquivelte),
+          autoprefixer,
+        ]
+      }
+    });
+    const sveltePreprocessor = preprocess({
+      postcss: {
+        plugins: [
+          postcssImport,
+          tailwindcssNesting,
+          tailwind(tailwindOptionsSvelte),
+          autoprefixer,
+        ]
+      }
+    });
+    const inputOptions = {
         input: entryPath.fsPath,
         plugins: [
           liquivelteSveltePlugin({
-            preprocess: preprocess(),
+            preprocess: liquiveltePreprocessor,
             emitCss: true
           }),
           svelte({
-            preprocess: preprocess(),
+            preprocess: sveltePreprocessor,
             compilerOptions: {
                 hydratable: true,
                 css: false,
@@ -347,7 +273,7 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
           //   css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` })),
           css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }),
           liquivelteLiquidPlugin({
-            themePath: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory).fsPath,
+            themePath: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory).fsPath
           }),
           resolve({
             browser: true,
@@ -359,7 +285,7 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
               inlineSources: !production
             })  
           ),
-          (!state['watching'] &&
+          (!production &&
           terser({
             module: true,
             compress: { join_vars: false, collapse_vars: false, dead_code: false, drop_console: true, unused: false },
