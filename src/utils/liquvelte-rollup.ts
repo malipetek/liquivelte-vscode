@@ -301,7 +301,6 @@ export function liquivelteLiquidPlugin (options?)
 			if (!prebuildDone) return;
 			Array.from(state.preprocess_results_cache).forEach(([key, value]) =>
 			{
-
 				fs.outputFileSync(key.replace(/\/src\/[^\/]+\//, '/src/.svelte/').replace('.liquivelte', ".svelte"), value.content);
 			});
 			const bundleModules = bundle[Object.keys(bundle).find(key => /\.js$/.test(key))].modules;

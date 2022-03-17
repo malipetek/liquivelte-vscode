@@ -30,35 +30,39 @@ state.set = { deptree: {}, prebuildDone: false};
 
 async function generateEntryScript (svelteIncludes: parsedToken[]): Promise<string>
 {
-  const includedModules = [];
-  svelteIncludes = svelteIncludes.filter(include =>
-  {
-    if (includedModules.indexOf(include.props.module) === -1) {
-      includedModules.push(include.props.module);
-      return true;
-    }
-    return false;
-  })
-  return svelteIncludes.reduce((acc, include) => `${acc}import ${toCamelCase(include.props.module)} from '../${include.tagName === 'section' ? 'sections' : 'snippets'}/${include.props.module}.liquivelte';
-`, '') + `
-document.addEventListener('DOMContentLoaded', () => {
-  ` +
-    svelteIncludes.reduce((acc, include) => `${acc}
-Array.from(document.querySelectorAll('.liquivelte-component.${include.props.module}')).forEach(wrapper => {
-  let svelteProps = wrapper.svelteProps;
-  let rawIncludes = wrapper.rawIncludes;
+  try {
+    const includedModules = [];
+    svelteIncludes = svelteIncludes.filter(include =>
+    {
+      if (includedModules.indexOf(include.props.module) === -1) {
+        includedModules.push(include.props.module);
+        return true;
+      }
+      return false;
+    })
+    return svelteIncludes.reduce((acc, include) => `${acc}import ${toCamelCase(include.props.module || include.includeName)} from '../${include.tagName === 'section' ? 'sections' : 'snippets'}/${include.props.module || include.includeName}.liquivelte';
+  `, '') + `
+  document.addEventListener('DOMContentLoaded', () => {
+    ` +
+      svelteIncludes.reduce((acc, include) => `${acc}
+  Array.from(document.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
+    let svelteProps = wrapper.svelteProps;
+    let rawIncludes = wrapper.rawIncludes;
 
-  new ${toCamelCase(include.props.module)}({
-    target: wrapper,
-    hydrate: true,
-    props: {
-        ...svelteProps,
-        ...rawIncludes
-    }
+    new ${toCamelCase(include.props.module || include.includeName)}({
+      target: wrapper,
+      hydrate: true,
+      props: {
+          ...svelteProps,
+          ...rawIncludes
+      }
+    });
   });
-});
-`, '') + `
-});`;
+  `, '') + `
+  });`;
+  } catch (err) {
+    throw err;
+  }
 }
 
 export async function generateAllScripts ()
@@ -201,13 +205,10 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
       plugins: [
     
       ],
-      purge: {
-        content: [
-          vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath  + "/**/*.svelte",
-    
-        ],
-        enabled: !production
-      },
+      content: [
+        vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath  + "/**/*.svelte",
+  
+      ],
     };
     const purgePath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath + "/**/*.liquivelte";
     const tailwindOptionsLiquivelte = {
@@ -218,12 +219,9 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
       plugins: [
     
       ],
-      purge: {
-        content: [
-          purgePath,
-        ],
-        enabled: production
-      },
+      content: [
+        purgePath,
+      ]
     };
     
   const autoPrefixerOptions = {
