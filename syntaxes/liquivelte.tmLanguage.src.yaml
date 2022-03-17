@@ -12,10 +12,7 @@ injections:
   #  'L:meta.<script|style|template>.liquivelte (meta.lang.<lang> | meta.lang.<langalternative> | ...) - (meta source)'
   #     patterns: [{begin: '(?<=>)(?!</)', end: '(?=</)', name: meta.embedded.block.liquivelte,
   #     contentName: source.<lang>, patterns: [{ include: source.<lang> }]}]
-  'L:text.liquid.liquivelte':
-    patterns: [{begin: '{%-?', end: '-?%}', name: meta.embedded.block.liquivelte,
-    contentName: text.html.liquid, patterns: [{ include: text.html.liquid }]}]
-
+  
   # Script Languages
   # JavaScript | 'javascript' | 'source.js'
   'L:meta.script.liquivelte meta.lang.javascript - (meta source)':
@@ -37,7 +34,10 @@ injections:
     patterns: [{begin: '(?<=>)(?!</)', end: '(?=</)', name: meta.embedded.block.liquivelte,
     contentName: source.js, patterns: [{ include: source.js }]}]
 
-  # ----
+  # ---- Liquid
+  'L:meta.liquid.liquivelte - meta.lang.liquid - (meta source)':
+    patterns: [{begin: '(?\{%-?\sliquid\s', end: '(?=-?%\})', name: meta.embedded.block.liquivelte,
+    contentName: text.html.liquid, patterns: [{ include: text.html.liquid }]}]
 
   # Style Languages
   # Stylus | 'stylus' | 'source.stylus'
@@ -86,7 +86,6 @@ injections:
   # Default (just introduces a new scope)
   'L:meta.template.liquivelte - meta.lang - (meta source)':
     patterns: [{begin: '(?<=>)\s', end: '(?=</template)', patterns: [{ include: '#scope' }]}]
-
   # ---- LANGUAGE EXTENSIONS
 
   # - TS / JS / CS -

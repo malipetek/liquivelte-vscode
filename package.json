@@ -496,8 +496,11 @@
         "scopeName": "block.liquid",
         "path": "./syntaxes/liquid-liquivelte.tmLanguage.xml",
         "injectTo": [
-          "source.liquivelte"
-        ]
+          "text.html.liquid"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.liquivelte": "liquivelte"
+        }
       },
       {
         "scopeName": "source.css.postcss",

@@ -443,7 +443,9 @@
               createFolder('src/snippets');
               await wait(300);
               createFolder('src/sections');
-              await wait(1000);
+              await wait(700);
+              createFile('src/sections/example-product.liquivelte');
+              await wait(700);
               createFile('src/liquid.js');
               checkFolders();
             }}> Create one for me </button>

@@ -6,21 +6,6 @@
   ],
   "uuid": "7582b62f-51d9-4a84-8c8d-fc189530faf6",
   "injections": {
-    "L:text.liquid.liquivelte": {
-      "patterns": [
-        {
-          "begin": "{%-?",
-          "end": "-?%}",
-          "name": "meta.embedded.block.liquivelte",
-          "contentName": "text.html.liquid",
-          "patterns": [
-            {
-              "include": "text.html.liquid"
-            }
-          ]
-        }
-      ]
-    },
     "L:meta.script.liquivelte meta.lang.javascript - (meta source)": {
       "patterns": [
         {
@@ -76,6 +61,21 @@
           "patterns": [
             {
               "include": "source.js"
+            }
+          ]
+        }
+      ]
+    },
+    "L:meta.liquid.liquivelte - meta.lang.liquid - (meta source)": {
+      "patterns": [
+        {
+          "begin": "(?\\{%-?\\sliquid\\s",
+          "end": "(?=-?%\\})",
+          "name": "meta.embedded.block.liquivelte",
+          "contentName": "text.html.liquid",
+          "patterns": [
+            {
+              "include": "text.html.liquid"
             }
           ]
         }
