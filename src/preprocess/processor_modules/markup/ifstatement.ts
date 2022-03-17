@@ -113,7 +113,16 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     const line = getLineFromOffset(markup, offset);
     item = item.replace(/([^\(]+)\s*(\(.+\))?/gim, (a, nm, par) => `${nm}, index ${par ? par : ''}`);
     
-    ms.overwrite(offset, offset + a.length, `{#each ${arr} as ${item} }`);
+    ms.overwrite(offset, offset + a.length, `{#each ${arr} as ${item} }
+{@const forloop = {
+  first: index === 0,
+  index: index + 1,
+  index0: index,
+  last: index === (${arr}).length - 1,
+  rindex: (${arr}).length - index,
+  rindex0: (${arr}).length - index - 1,
+  length: (${arr}).length,
+} }`);
 
     replaceOperations.push({
       was: {
