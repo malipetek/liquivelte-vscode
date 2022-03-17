@@ -7,7 +7,7 @@ import createTagRegex from '../../../utils/create-tag-regex';
 export default function expressionProcessor (markup: string, ms: MagicString, { replaceOperations }): ReplaceResult
 {
 
-  markup.replace(/"?\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}"?/gim, (a, expression, filter, offset) =>
+  markup.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (a, expression, filter, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
 
