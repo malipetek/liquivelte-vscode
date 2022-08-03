@@ -30,6 +30,8 @@ export default async function ()
       presetsSame = false;
       state['templates'] = templates;
       state['layouts'] = layouts;
+      state['themeDirectory'] = themeDirectory;
+      
       return {
         srcFolder,
         configFile,
@@ -106,6 +108,7 @@ ${a}`);
 
   state['templates'] = templates;
   state['layouts'] = layouts;
+  state['themeDirectory'] = themeDirectory;
   
   return {
     srcFolder,

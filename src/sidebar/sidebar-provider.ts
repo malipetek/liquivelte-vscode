@@ -9,6 +9,8 @@ import debounce from 'debounce-async';
 export const sendStatsDebounced = debounce(sendStats, 1000);
 import { exec } from "child_process";
 import state from "../utils/state";
+import clearSchema from "../utils/clear-schema";
+
 function execAsync (cmd)
 {
   return new Promise((res, rej) =>
@@ -150,7 +152,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             const currentFile = await vscode.workspace.fs.readFile(vscode.Uri.parse(data.file));
             const content = currentFile.toString();
             const newContent = content.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
-            { 
+            {
+              clearSchema(data.schema);
               const schemaStringified = JSON.stringify(data.schema, null, 2);
               return `{% schema %}\n${schemaStringified}\n{% endschema %}`;
             });
@@ -192,8 +195,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
             }
           case 'open-file': {
-            const uri = vscode.Uri.parse(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.link).path);
-            const line = (+uri.fragment);
+            // const uri = vscode.Uri.parse(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.link).path);
+            const _uri = vscode.Uri.parse(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.link));
+            let [uri, line] = _uri.fsPath.split('#');
+            uri = vscode.Uri.parse(uri);
+            line = +line;
             const editor = await vscode.window.showTextDocument(uri);
             editor.revealRange(new vscode.Range(line, 0, line, 0), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
             break;

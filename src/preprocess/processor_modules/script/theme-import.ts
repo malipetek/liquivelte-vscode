@@ -1,4 +1,4 @@
-import { uid } from 'uid';
+import uid from '../../../utils/uid';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import MagicString from 'magic-string';
@@ -11,7 +11,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
   {
     const line = getLineFromOffset(script, offset);
 
-    const id = `sub_import${uid()}`;
+    const id = `sub_import${uid(a)}`;
     if (subObject) {
       /* -------------------------------------------------------------------------- */
       /*              IMPORT FROM THEME IS SOMETHING LIKE product.image             */

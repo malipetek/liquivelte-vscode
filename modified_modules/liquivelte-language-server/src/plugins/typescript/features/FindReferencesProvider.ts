@@ -31,7 +31,7 @@ export class FindReferencesProviderImpl implements FindReferencesProvider {
 
         const locations = await Promise.all(
             references
-                .filter((ref) => context.includeDeclaration || !ref.isDefinition)
+                .filter((ref) => context.includeDeclarations)
                 .filter(notInGeneratedCode(tsDoc.getFullText()))
                 .map(async (ref) => {
                     const defDoc = await docs.retrieveFragment(ref.fileName);

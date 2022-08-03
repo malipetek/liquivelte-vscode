@@ -108,10 +108,10 @@ export default async function liquivelteTransformer (documentContent: string, fi
     magicString: new MagicString(documentContent),
     replaceOperations: [],
     liquidContent: '',
-    subImportsRegistryModule: [...prevResults.subImportsRegistryModule],
-    liquidImportsModule: [...prevResults.liquidImportsModule],
-    rawIncludeRegistry: [...prevResults.rawIncludeRegistry],
-    formIncludes: [...prevResults.formIncludes],
+    subImportsRegistryModule: Array.from(new Set([...prevResults.subImportsRegistryModule])),
+    liquidImportsModule: Array.from(new Set([...prevResults.liquidImportsModule])),
+    rawIncludeRegistry: Array.from(new Set([...prevResults.rawIncludeRegistry])),
+    formIncludes: Array.from(new Set([...prevResults.formIncludes])),
   };
 
   const { code, map } = await preprocess(documentContent, {

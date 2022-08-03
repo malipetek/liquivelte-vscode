@@ -2,7 +2,7 @@ import type MagicString from 'magic-string';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
-import { uid } from 'uid';
+import uid from '../../../utils/uid';
 
 export default function formProcessor (markup: string, ms: MagicString, { replaceOperations, formIncludes, liquidContent }): ReplaceResult
 {
@@ -27,7 +27,7 @@ export default function formProcessor (markup: string, ms: MagicString, { replac
         return ``;
       });
     }
-    var id = `f${uid()}`;
+    var id = `f${uid(a)}`;
       formIncludes.push({
         id
       });

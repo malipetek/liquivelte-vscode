@@ -46,7 +46,12 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
       const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
       const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
       const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
-      ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} >`);
+      if (!children) {
+        ms.overwrite(offset, offset + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} />`);
+      } else {
+        ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} >`);
+      }
+
       return '';  
     });
 
@@ -75,6 +80,17 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
           propsParsed = { ...propsParsed, ...spreadProps };
         }
       }
+      if (!children) {
+        return `
+{% comment %}
+  kvsp stands for "key value separator"
+  prsp stands for "props separator"
+{% endcomment %}
+{% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
+{% include 'liquivelte', module: '${filename}', props: props, sub_include: true %}
+{% assign props = '' %}`;
+      }
+
       const { remainingContent, slotContents } = getNamedSlots(children);
       return `
 {% comment %}

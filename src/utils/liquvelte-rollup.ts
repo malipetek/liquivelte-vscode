@@ -11,6 +11,8 @@ import addCssClassesToLiquid from "./inject-liquid-classes";
 import toCamelCase from './to-camel-case';
 import state from './state';
 
+import { SECTION_BLOCKS_LIQUID } from './liquid-fragments';
+
 state.set = { incl_tree: {} };
 const PREFIX = '[rollup-plugin-liquivelte]';
 const pkg_export_errors = new Set();
@@ -144,7 +146,7 @@ export function liquivelteSveltePlugin (options = {})
 			};
 
 			const inclTree = state['incl_tree'];
-			console.log('deptree ', inclTree);
+			// console.log('deptree ', inclTree);
 
 			function getDeps (start)
 			{
@@ -163,27 +165,18 @@ export function liquivelteSveltePlugin (options = {})
 			const prebuildDone = state['prebuildDone'];
 			const watchMode = state['watching'];
 
-			const result = !prebuildDone ?
-				(await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id)))
-				:
-				(await new Promise((done) =>
-				{
-					(async () =>
-					{
-						let lastResult = null;
-						for (let dep of deps) {
-							let res;
-							if (state.preprocess_results_cache.has(dep)) {
-								res = state.preprocess_results_cache.get(dep);
-							} else {
-								res = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep), lastResult);
-								state.preprocess_results_cache.set(dep, res);
-							}
-							lastResult = res;
-						}
-						return lastResult;
-					})().then(finalRes => done(finalRes)).catch(err => { throw err; });
-				}));
+			const allModulesBuiltBefore = deps.every(dep => preprocess_results_cache.has(dep));
+			let result = state.preprocess_results_cache.get(id);
+			if (allModulesBuiltBefore) {
+				result = (await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id)), result);
+			} else {
+				result = (await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id)));
+				await Promise.all(deps.filter(dep => !preprocess_results_cache.has(dep)).map(async dep =>
+				{ 
+					const preBuildRes = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep));
+					state.preprocess_results_cache.set(dep, preBuildRes);
+				}));	
+			}
 
 			// const result = await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id));
 			if (result.map) svelte_options.sourcemap = result.map;
@@ -229,15 +222,15 @@ export function liquivelteSveltePlugin (options = {})
 		},
 		async buildEnd ()
 		{
-			console.log(arguments);
+			// console.log(arguments);
 		},
 		renderChunk (code, options)
 		{
-			console.log(options);
+			// console.log(options);
 		},
 		augmentChunkHash (code, chunk, hash)
 		{
-			console.log(chunk);
+			// console.log(chunk);
 		},
 		/**
 		 * All resolutions done; display warnings wrt `package.json` access.
@@ -293,10 +286,70 @@ export function liquivelteLiquidPlugin (options?)
 		// 		return;
 		// 	}
 		// },
-		generateBundle: function generateBundle (opts, bundle)
+		generateBundle: async function generateBundle (opts, bundle)
 		{
 			const prebuildDone = state.prebuildDone;
 			const watchMode = state.watching;
+
+			// if (!prebuildDone) {
+				
+				const chunkFiles = [];
+				Object.keys(bundle).map(key => bundle[key]).forEach(file =>
+				{
+					if (file.type === 'chunk') {
+						chunkFiles.push(file);
+					}
+				});
+	
+				try {
+					// const files = fs.readdirSync(`${opts.dir}/`);
+						
+					// const nomoduleFiles = files.filter(file => file.indexOf('nomodule') !== -1);
+					// const moduleFiles = files.filter(file => file.indexOf('nomodule') === -1 && file.indexOf('liquivelte') !== -1);
+					// moduleFiles.forEach(file =>
+					// 	{
+					// 		chunkFiles.forEach(chunkFile =>
+					// 		{
+					// 			// convert file path to file name
+					// 			if (!chunkFile.facadeModuleId) return;
+					// 			const fileName = path.parse(chunkFile.facadeModuleId).name;
+					// 			const currentFileName = chunkFile.fileName;
+					// 			if (currentFileName.indexOf('nomodule') !== -1) { return; }
+					// 			// console.log('file ', file, fileName, file.indexOf(fileName));
+							
+					// 				if (file.indexOf(`${fileName}-hs`) !== -1 && file !== currentFileName) {
+					// 					console.log('will delete 1', file);
+					// 					try {
+					// 						fs.unlinkSync(`${opts.dir}/${file}`);
+					// 					} catch (e) {
+					// 						// whatever
+					// 					}
+					// 				}
+					// 		});
+					// });
+					// nomoduleFiles.forEach(file =>
+					// { 
+					// 	chunkFiles.forEach(chunkFile =>
+					// 		{
+					// 			// convert file path to file name
+					// 			if (!chunkFile.facadeModuleId) return;
+					// 			const fileName = path.parse(chunkFile.facadeModuleId).name;
+					// 			const currentFileName = chunkFile.fileName;
+					// 			if (currentFileName.indexOf('nomodule') === -1) { return; }
+							
+					// 				if (file.indexOf(`${fileName}-hs`) !== -1 && file !== currentFileName) {
+					// 					console.log('will delete 2', file);
+					// 					try {
+					// 						fs.unlinkSync(`${opts.dir}/${file}`);
+					// 					} catch (e) {
+					// 						// whatever
+					// 					}
+					// 				}
+					// 	});
+					// });
+				} catch (e) { 
+					console.error(e);
+				}
 
 			if (!prebuildDone) return;
 			Array.from(state.preprocess_results_cache).forEach(([key, value]) =>
@@ -345,14 +398,24 @@ export function liquivelteLiquidPlugin (options?)
 						rawIncludeRegistry,
 						...rest
 					} = state.theme_imports_cache.get(id);
-					const filePath = path.parse(id);
+					let filePath = path.parse(id);
 					let parentFolderSectionsOrSnippets = filePath.dir.split('/').reduce((c, piece) => c.includes('snippets') || c.includes('sections') ? [...c] : [...c, piece], []).join('/');
 					if (!parentFolderSectionsOrSnippets) {
 						throw new Error(`Could not determine parent folder for ${id}`);
 					}
 					const parentFolder = path.parse(parentFolderSectionsOrSnippets);
-					const fileName = filePath.base;
-					const parentFolderName = parentFolder.base;
+					let fileName = filePath.base;
+					if (fileName == 'index.liquid' && parentFolder.name == 'sections') {
+						// WE DO THIS BECAUSE WHEN A SECTION IS A FOLDER WE WANT TO USE THE INDEX.LIQUID FILE BUT FOLDER NAME FOR LIQUID FILE
+						filePath = path.parse(filePath.dir);
+						fileName = `${filePath.base}.liquid`;
+					}
+
+					let parentFolderName = parentFolder.base;
+					// IF MODULE IS IN SECTIONS FOLDER BUT IS A SUB-MODULE WE MOVE IT INTO SNIPPETS INSTEAD OF SECTIONS
+					if (parentFolderName == 'sections' && path.parse(filePath.dir).base !== 'sections') {
+						parentFolderName = 'snippets';
+					}
 					const dest = path.resolve(themePath, parentFolderName, fileName);
 					let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
 					{
@@ -513,14 +576,19 @@ endfor
 	propScript.remove();
 	})();</script>`;
 
-					const propsContent = `<script type="text/noscript" class="instance-data">{
+					const propsContent = `
+${subImportsRegistryModule.some(v => v.id == 'section$blocks') ? SECTION_BLOCKS_LIQUID  : ''}					
+<script type="text/noscript" class="instance-data">{
 			${liquidImportsModule
 							.map(v => `"${v}" : {{ ${v} | json }} `)
 							.join(', ')
 						}
 			${liquidImportsModule.length && subImportsRegistryModule.length ? ',' : ''}
 			${subImportsRegistryModule
-							.map(v => `"${v.id}": {{ ${v.importStatement} | json }} `)
+						.map(v =>
+							v.id == 'section$blocks' ?
+								`"${v.id}": {{ section_blocks_json }}`
+							: `"${v.id}": {{ ${v.importStatement} | json }} `)
 							.join(', ')
 						}
 			}</script>

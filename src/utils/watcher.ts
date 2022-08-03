@@ -22,7 +22,7 @@ state.until['watching'] = () =>
 
 export async function startWatch ()
 {
-  console.log("state['deptree']", state['asd']);
+  console.log("state['deptree']", state['deptree']);
   if (!state['deptree'] || Object.keys(state['deptree']).length === 0) {
     /*
     * If there is not dependency tree, we need to run build once to get the dependency tree
@@ -58,17 +58,22 @@ export async function startWatch ()
         return dependency === uri.fsPath;
       });
 
+      // console.log('TEMPLATE NAME', templateName, willRebuild ? 'WILL REBUILD' : '');
       return {
         willRebuild,
         templateName
-      }
+      };
     }).filter(entry => entry.willRebuild);
 
-    console.log('templatesToRebuild', templatesToRebuild);
-    await Promise.all(templatesToRebuild.map(async entry =>
-    { 
-      await generateTemplateScript(entry.templateName, layouts.includes(entry.templateName));
-    }));
+    // console.log('templatesToRebuild', templatesToRebuild);
+    try {
+      await Promise.all(templatesToRebuild.map(async entry =>
+      { 
+        await generateTemplateScript(entry.templateName, layouts.includes(entry.templateName));
+      })).catch(err => console.log('err', err));
+    } catch (err) {
+      console.log('error happened', err);
+    }
 
   });
   if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length) {

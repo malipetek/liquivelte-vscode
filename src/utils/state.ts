@@ -1,5 +1,3 @@
-console.log(' ======== NEW STATE ====== ');
-
 interface State
 { 
   data: object;

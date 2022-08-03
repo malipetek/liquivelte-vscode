@@ -3,7 +3,7 @@
   import SidePage from "../SidePage.svelte";
   import SchemaSettingInput from "./SchemaSettingInput.svelte";
   import SchemaOptions from "./SchemaOptions.svelte";
-
+  import { convertSetting, setting_types, newSetting } from '../../utils/settings.js';
   export let index;
   let optionPages = {};
   export let setting;
@@ -13,91 +13,11 @@
     initialSetting = setting;
   }
 
-  const setting_types = [
-    "header",
-    "paragraph",
-
-    "checkbox",
-    "number",
-    "radio",
-    "range",
-    "select",
-    "text",
-    "textarea",
-
-    "article",
-    "blog",
-    "collection",
-    "color",
-    "color_background",
-    "font_picker",
-    "html",
-    "image_picker",
-    "link_list",
-    "liquid",
-    "page",
-    "product",
-    "richtext",
-    "url",
-    "video_url",
-  ];
-
-  const default_attrs = ["id", "label", "default", "info"];
-
-  const setting_keys = {
-    header: ["content"],
-    paragraph: ["content"],
-    checkbox: [...default_attrs],
-    number: [...default_attrs, "placeholder"],
-    radio: [...default_attrs, "options"],
-    range: [...default_attrs, "min", "max", "step", "unit"],
-    select: [...default_attrs, "options"],
-    text: [...default_attrs, "placeholder"],
-    textarea: [...default_attrs, "placeholder"],
-
-    article: [...default_attrs],
-    blog: [...default_attrs],
-    collection: [...default_attrs],
-    color: [...default_attrs],
-    color_background: [...default_attrs],
-    font_picker: [...default_attrs],
-    html: [...default_attrs, "placeholder"],
-    image_picker: [...default_attrs],
-    link_list: [...default_attrs],
-    liquid: [...default_attrs],
-    page: [...default_attrs],
-    product: [...default_attrs],
-    richtext: [...default_attrs],
-    url: [...default_attrs],
-    video_url: [...default_attrs],
-  };
-
-  const newSetting = () => {
-    const s = {};
-    default_attrs.forEach((k) => (s[k] = ""));
-    return s;
-  };
-
-  const convertSetting = () => {
-    const type = setting.type;
-    const _setting = { ...setting };
-    for(let key in _setting) {
-      if(key !== 'type' && setting_keys[type].indexOf(key) === -1) {
-        delete _setting[key];
-      }
-    }
-    for(let key in setting_keys[type]) {
-      _setting[setting_keys[type][key]] = _setting[setting_keys[type][key]] || initialSetting[setting_keys[type][key]] || (setting_keys[type][key] === 'options' ? [] : "");
-    }
-    
-    setting = {..._setting, type};
-  };
-
   $: current_keys = Object.keys(setting);
 </script>
 
 <div box>
-  <select setting bind:value={setting.type} on:change={convertSetting} >
+  <select setting bind:value={setting.type} on:change={() => setting = convertSetting(initialSetting, setting)} >
     <option value="">Select a setting type</option>
     {#each setting_types as type}
       <option value={type}>{type}</option>

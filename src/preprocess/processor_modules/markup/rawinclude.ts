@@ -1,5 +1,5 @@
 import type MagicString from 'magic-string';
-import { uid } from 'uid';
+import uid from '../../../utils/uid';
 
 const replaceOperations: ReplaceOperation[] = [];
 import { ReplaceOperation } from '../../../types/replace-operation';
@@ -11,7 +11,7 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
   markup.replace(/\{%-*\s*(include)\s*['"](.*?)['"]\s*(.*?)\s*-*%\}/gim, (a, keyword, include, rest, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
-    var id = `rawinclude_${uid()}`;
+    var id = `rawinclude_${uid(a)}`;
     rawIncludeRegistry.push({
       id,
       include,

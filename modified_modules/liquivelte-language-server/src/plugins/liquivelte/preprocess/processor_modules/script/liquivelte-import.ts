@@ -1,4 +1,4 @@
-import { uid } from 'uid';
+import uid from '../../../utils/uid';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import MagicString from 'magic-string';
