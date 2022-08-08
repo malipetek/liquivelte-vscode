@@ -48,7 +48,7 @@ export default function removeLiquid (markup: string, ms: MagicString, { rawIncl
     
     let schema = {};
     try {
-    schema = JSON.parse(content);
+      schema = JSON.parse(content);
     } catch (e) {
       console.log(e);
     }

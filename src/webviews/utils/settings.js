@@ -83,7 +83,21 @@
     }
     if (type === 'select' || type === 'radio') {
       _setting.options = _setting.options.map((o) => ({ label: "", value: "", group: "", ...o }));
-    }   
+    }
+    if (type === 'number') {
+      _setting.max = +_setting.max || null;
+      _setting.default = +_setting.default || 0;
+
+    }
+    console.log('transforming setting', _setting);
+    if (type === 'range') {
+      console.log('transforming range', _setting);
+      _setting.min = +_setting.min || 0;
+      _setting.max = +_setting.max || 100;
+      _setting.step = +_setting.step || 1;
+      _setting.default = +_setting.default || 1;
+      console.log('transforming range', _setting);
+    }
     return {..._setting, type};
   };
 

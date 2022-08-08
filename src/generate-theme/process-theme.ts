@@ -9,6 +9,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import css from 'rollup-plugin-css-only';
+import cleancss from 'postcss-discard-duplicates';
 // import css from 'rollup-plugin-css-chunks';
 import scss from 'rollup-plugin-scss';
 import preprocess from 'svelte-preprocess';
@@ -170,6 +171,7 @@ async function _generateIncludeScripts ({themeDirectory})
     ` : ''}
     <!-- liquivelte includes end -->${afterInclude}`;
 
+    // TODO: include fallback scripts for SystemJS
     if (newContent === layoutContent) { return; }
     await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout', layoutname), Buffer.from(newContent));
     return;
@@ -254,6 +256,7 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
     const postcssImport = postcssimport({
       root: path.resolve(__dirname),
     });
+    console.log('cleancss', cleancss);
     const liquiveltePreprocessor = preprocess({
       postcss: {
         plugins: [
@@ -261,6 +264,7 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
           tailwindcssNesting,
           tailwind(tailwindOptionsLiquivelte),
           autoprefixer,
+          cleancss(),
         ]
       }
     });
@@ -271,6 +275,7 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
           tailwindcssNesting,
           tailwind(tailwindOptionsSvelte),
           autoprefixer,
+          cleancss(),
         ]
       }
     });
@@ -351,11 +356,12 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
       chunkFileNames: `[name]-hs[hash].liquivelte.js`,
       manualChunks (id)
       {
+        // console.log('chunk id', id);
         if (/\/sections\/[^\/]+\/.+/.test(id)) {
           return id.match(/\/sections\/([^\/]+)\/.+/)[1];
         }
-        if (id.includes('node_modules')) {
-          return 'vendor';
+        if (id.includes('node_modules') && id.includes('svelte')) {
+          return 'svelte';
         }
       }
     }
@@ -405,8 +411,9 @@ export async function generateTemplateScript (templateName: string, isLayout: bo
           // an array of file names this bundle depends on
           // console.log(bundle.watchFiles);
           state['deptree'][templateName] = bundle.watchFiles.filter(e => !e.includes('node_modules'));
-
-          await generateOutputs(bundle);
+          if (state['prebuildDone']) {
+            await generateOutputs(bundle);
+          }
         } catch (error) {
           buildFailed = true;
           // do some error reporting

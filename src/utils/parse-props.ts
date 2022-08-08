@@ -78,7 +78,7 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
       currentValue += char;
     } else if (!propStarted && !valueStarted) {
       if (currentProp) {
-        props[currentProp] = currentValue;
+        props[currentProp] = currentValue.replace(/^"/, '').replace(/"$/, '');
       }
       currentValue = '';
       currentProp = '';

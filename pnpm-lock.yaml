@@ -30,6 +30,7 @@ specifiers:
   node-sass: ^7.0.1
   parse-yaml: ^0.1.0
   postcss: ^8.4.11
+  postcss-discard-duplicates: ^5.1.0
   postcss-import: ^14.0.2
   puppeteer-core: ^13.5.1
   require-relative: ^0.8.7
@@ -70,6 +71,7 @@ dependencies:
   node-sass: 7.0.1
   parse-yaml: 0.1.0
   postcss: 8.4.14
+  postcss-discard-duplicates: 5.1.0_postcss@8.4.14
   postcss-import: 14.1.0_postcss@8.4.14
   puppeteer-core: 13.7.0
   require-relative: 0.8.7
@@ -2940,6 +2942,15 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       find-up: 4.1.0
+
+  /postcss-discard-duplicates/5.1.0_postcss@8.4.14:
+    resolution: {integrity: sha512-zmX3IoSI2aoenxHV6C7plngHWWhUOV3sP1T8y2ifzxzbtnuhk1EdPwm0S1bIUNaJ2eNbWeGLEwzw8huPD67aQw==}
+    engines: {node: ^10 || ^12 || >=14.0}
+    peerDependencies:
+      postcss: ^8.2.15
+    dependencies:
+      postcss: 8.4.14
+    dev: false
 
   /postcss-import/14.1.0_postcss@8.4.14:
     resolution: {integrity: sha512-flwI+Vgm4SElObFVPpTIT7SU7R3qk2L7PyduMcokiaVKuWv9d/U+Gm/QAd8NDLuykTWTkcrjOeD2Pp1rMeBTGw==}

@@ -164,19 +164,50 @@ export function liquivelteSveltePlugin (options = {})
 			const deps = getDeps(id);
 			const prebuildDone = state['prebuildDone'];
 			const watchMode = state['watching'];
+			
+			const result = (await new Promise((done) =>
+			{
+				(async () =>
+				{
+					async function generateTransformedModules() {
+						let lastResult = null;
+						for (let dep of deps) {
+							let res;
+							if (state.preprocess_results_cache.has(dep) && !state.preprocess_results_cache.get(dep).shouldRebuild) {
+								res = state.preprocess_results_cache.get(dep);
+								res.shouldRebuild = !prebuildDone;
+							} else {
+								// console.log('Caches ', deps.map(dep => `${dep.match(/[^\/]+$/)[0]} ${state.preprocess_results_cache.has(dep) ? 'has' : 'doesnt have'} cached result`));
+								// console.log('Submodules built ', deps.filter(dep => dep != id).every(dep => state.preprocess_results_cache.has(dep)));
+								res = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep), lastResult);
+								res.shouldRebuild = !prebuildDone;
+								state.preprocess_results_cache.set(dep, res);
+							}
+							lastResult = res;
+						}
+						console.log(prebuildDone ? 'build' : 'prebuild', id.match(/[^\/]+$/)[0]);
+						return lastResult;
+					}
 
-			const allModulesBuiltBefore = deps.every(dep => preprocess_results_cache.has(dep));
-			let result = state.preprocess_results_cache.get(id);
-			if (allModulesBuiltBefore) {
-				result = (await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id)), result);
-			} else {
-				result = (await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id)));
-				await Promise.all(deps.filter(dep => !preprocess_results_cache.has(dep)).map(async dep =>
-				{ 
-					const preBuildRes = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep));
-					state.preprocess_results_cache.set(dep, preBuildRes);
-				}));	
-			}
+					let result = await generateTransformedModules();
+					// console.log('shouldRebuild', result.shouldRebuild);
+					if (result.shouldRebuild) {
+						result = await generateTransformedModules();
+					}
+					// let attempts = 0;
+					// while (prebuildDone && !deps.filter(dep => dep != id).every(dep => state.preprocess_results_cache.has(dep))) {
+					// 	attempts++;
+					// 	if (attempts > 10) {
+					// 		console.log('Too many attempts to build submodules for ', id);
+					// 		break;
+					// 	}
+					// 	result = await generateTransformedModules();
+					// }
+					result.deps = deps.filter(dep => dep != id);
+					state.preprocess_results_cache.set(id, result);
+					return result;
+				})().then(finalRes => done(finalRes)).catch(err => { throw err; });
+			}));
 
 			// const result = await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id));
 			if (result.map) svelte_options.sourcemap = result.map;
@@ -417,6 +448,7 @@ export function liquivelteLiquidPlugin (options?)
 						parentFolderName = 'snippets';
 					}
 					const dest = path.resolve(themePath, parentFolderName, fileName);
+
 					let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
 					{
 						if (!named) {
@@ -454,6 +486,57 @@ endfor
 {%- assign children_${name} = '' -%}
 `;
 
+					});
+
+					if (parentFolderName != 'sections') {
+						
+						finalLiquidContent = finalLiquidContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, '');
+					}
+
+					finalLiquidContent = finalLiquidContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
+					{ 
+						const subSchemas = imp.deps.filter(dep => state.preprocess_results_cache.has(dep)).map(dep =>
+						{
+							const depImpl = state.preprocess_results_cache.get(dep);
+							const fileContent = depImpl.liquidContent;
+							console.log('checking for schema', dep);
+							if (/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim.test(fileContent)) {
+								let schemaJson;
+								fileContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
+								{
+									schemaJson = content
+									return '';
+								});
+								let schema = false;
+								try {
+									schema = JSON.parse(schemaJson);
+								} catch (err) {
+									console.log('schema could not be parsed', schemaJson);
+								}
+								return schema;
+							}
+							// if no schema return false
+							return false;
+						}).filter(e => !!e);
+
+						let schema = JSON.parse(content);
+
+						console.log('subSchemas', subSchemas);
+
+						subSchemas.forEach(subSchema =>
+						{ 
+							if (subSchema.type) {
+								schema = { ...schema, blocks: [...(schema.blocks), subSchema] };
+							} else {
+								schema = {
+									...schema, settings: [...(schema.settings || []), ...(subSchema.name ? [{
+										type: "header",
+										content: subSchema.name,
+									}] : []), ...(subSchema.settings || [])]
+								};
+							}
+						});
+						return a.replace(content, JSON.stringify(schema, null, 2));
 					});
 
 					finalLiquidContent = finalLiquidContent.replace(/<(\w+)(\s[^>]+)>/gim, (a, tagName, content) =>
@@ -511,7 +594,7 @@ endfor
 						});
 					});
 
-					const parsePropsFn = `function parseProps(e){const s={};let t={bracketsOpened:0,get open(){return this.bracketsOpened>0},set open(e){!0===e?this.bracketsOpened=this.bracketsOpened+1:!1===e&&(this.bracketsOpened=this.bracketsOpened-1)}},a=\` \${e} \`.split(""),n=!1,c=!1,r=!1,p=!1,b="",k="";for(let e=0;e<a.length;e++){const o=a[e];switch(!0){case" "===o:p||t.open||(c=!1),!r||p||t.open||(r=!1);break;case"{"===o:t.open=!0,r||(c=!0);break;case"}"===o:t.open=!1;break;case'"'===o:p=!p;break;case"="===o:c&&(c=!1,r=!0,n=!0);break;case/[^\\s]/.test(o):r||(c=!0)}!c||r||n?c||!r||n?c||r||(b&&(s[b]=k),k="",b=""):k+=o:b+=o,n=!1}return Object.keys(s).map((e=>{if(/\\{\\s*\\.\\.\\.(\\w+)\\s*\\}/.test(e)){const[,t]=e.match(/\\{\\s*\\.\\.\\.(\\w+)\\s*\\}/);s.spread=t,delete s[e]}})),s}`;
+					const parsePropsFn = `function parseProps(e){const s={};let t={bracketsOpened:0,get open(){return this.bracketsOpened>0},set open(e){!0===e?this.bracketsOpened=this.bracketsOpened+1:!1===e&&(this.bracketsOpened=this.bracketsOpened-1)}},a=\` \${e} \`.split(""),r=!1,c=!1,n=!1,p=!1,o="",b="";for(let e=0;e<a.length;e++){const k=a[e];switch(!0){case" "===k:p||t.open||(c=!1),!n||p||t.open||(n=!1);break;case"{"===k:t.open=!0,n||(c=!0);break;case"}"===k:t.open=!1;break;case'"'===k:p=!p;break;case"="===k:c&&(c=!1,n=!0,r=!0);break;case/[^\\s]/.test(k):n||(c=!0)}!c||n||r?c||!n||r?c||n||(o&&(s[o]=b.replace(/^"/,"").replace(/"$/,"")),b="",o=""):b+=k:o+=k,r=!1}return Object.keys(s).map((e=>{if(/\\{\\s*\\.\\.\\.(\\w+)\\s*\\}/.test(e)){const[,t]=e.match(/\\{\\s*\\.\\.\\.(\\w+)\\s*\\}/);s.spread=t,delete s[e]}})),s}`;
 					// eslint-disable-next-line @typescript-eslint/naming-convention
 					const JSONParseFn = `function JSONparse(n){try{return JSON.parse(n)}catch(t){try{const e=parseInt(t.message.match(/position\\s+(\\d+)/)[1],10),s=n.slice(0,e+1).split("\\n"),i=s.length,l=n.split("\\n"),r=s[s.length-1].length-1,c=l.slice(0,i).join("\\n")+"\\n"+new Array(r).fill(" ").join("")+"👆\\n"+l.slice(i).join("\\n");return console.log(c),{}}catch(n){throw t}}}`;
 					const liquidPropsParser = `{%- liquid
@@ -563,6 +646,7 @@ endfor
 	
 	${imp.formIncludes.length ? imp.formIncludes.map(entry => `
 		wrapper.svelteProps["form_inputs_${entry.id}"] = [...(wrapper.svelteProps["form_inputs_${entry.id}"] || []), htmlDecode(window.liquivelte_form_inputs['form_inputs_${entry.id}']) ];
+		console.log('parsing props');
 		wrapper.svelteProps["form_props_${entry.id}"] = [...(wrapper.svelteProps["form_props_${entry.id}"] || []), parseProps(window.liquivelte_form_props['form_props_${entry.id}']) ];
 	`).join(';') : ''}
 	${imp.rawIncludeRegistry.length ? imp.rawIncludeRegistry.map(entry => `
@@ -608,7 +692,7 @@ ${propsParserScript}
 `;
 
 					finalLiquidContent = imp.svelteCssHashes ? addCssClassesToLiquid(`svelte-${imp.svelteCssHashes}`, finalLiquidContent) : finalLiquidContent;
-
+					console.log('outputting liquid', dest);
 					fs.outputFileSync(dest, finalLiquidContent);
 				} catch (err) {
 					this.error(err);

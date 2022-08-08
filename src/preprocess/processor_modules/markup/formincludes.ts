@@ -41,7 +41,7 @@ export default function formProcessor (markup: string, ms: MagicString, { replac
         explanation: `form props will be in the liquid output and will persist`
       });
 
-      ms.overwrite(offset, offset + a.length, `<${tagName} ${content} {...form_props_${id}[index || 0]}>
+    ms.overwrite(offset, offset + a.length, `<${tagName} ${content} {...form_props_${id}[index || 0]}>
   {@html form_inputs_${id}[index || 0]}`);
     // console.log(tagName, hasClass);
     return `{% capture form_content %}

@@ -81,7 +81,7 @@
     vscode.postMessage({
       type: "save-schema",
       file: currentFile,
-      schema: $schema,
+      schema: addDefaultEmptySettingsFields({...$schema}),
     });
     schemaFromFile.set(JSON.parse(JSON.stringify($schema)));
     saveTranslations();
@@ -610,14 +610,14 @@
             </Expandable>
           </div>
         {/if}
-        <Expandable open={true}>
+        <!-- <Expandable open={true}>
           <h3 slot="opener" >Generate Critical CSS</h3>
           <ul>
             {#each Object.keys(stats.templates) as template}
               <li> <input id="crit-#{template}" type="checkbox"  /> <label for="crit-#{template}"> { template } </label> </li>
             {/each}
           </ul>
-        </Expandable>
+        </Expandable> -->
         <!-- not loading -->
       {/if}
     </span>
