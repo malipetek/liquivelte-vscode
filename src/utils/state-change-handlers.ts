@@ -60,7 +60,7 @@ export async function activeFileChangeHandler (editor: vscode.TextEditor)
 			data: editor.document.uri.fsPath
 		});
 
-		const fileExtention = editor.document.fileName.match(/\.[^\.]+$/i)[0];
+		const fileExtention = (editor.document.fileName.match(/\.[^\.]+$/i) || [])[0];
 
 		if (fileExtention === '.liquivelte' || fileExtention === '.liquid') {
 			await fileChangeHandler(editor.document);

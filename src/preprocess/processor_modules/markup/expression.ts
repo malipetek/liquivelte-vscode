@@ -4,7 +4,7 @@ import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryMod
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function expressionProcessor (markup: string, ms: MagicString, { replaceOperations }): ReplaceResult
+export default function expressionProcessor (markup: string, ms: MagicString, { replaceOperations, liquidContent }): ReplaceResult
 {
 
   markup.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (a, expression, filter, offset) =>
@@ -70,9 +70,27 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
     }
   });
 
+  liquidContent = liquidContent.replace(/(\w+)=['"]?\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}['"]?/gim, (a, prop, expression, filter, offset) =>
+  {
+    if (filter) {
+      const exp = filter.match(/(\|\s*[^\|]+)(\:\s*[^\|]+)?/gi).map(filt =>
+        {
+          const filterReplaced = filt.replace(/\|\s*(\w+)\:?\s*([^\|]+)?/gi, '$1 $2');
+          const filter_value = filterReplaced.match(/([\w\.]|(".*?")|('.*?'))+/gi);
+          return { filter: filter_value[0], value: filter_value[1] || filter_value[2], second_value: filter_value[2] };
+        }).reduce((c, e, i) =>
+        {
+          return `${e.filter}§{{${i == 0 ? expression : c}}}${e.value ? `, {{${e.value}}}${e.second_value !== undefined ? `, {{${e.second_value}}}` : ''}` : ''}`;
+        }, '');
+        return a + ` liquivelte-value-cache="${exp}§{{${expression}${filter||''} }}"`;
+    }
+    return a;
+  });
+
   const result: ReplaceResult = {
     magicString: ms,
-    replaceOperations
+    replaceOperations,
+    liquidContent
   };
 
   return result;

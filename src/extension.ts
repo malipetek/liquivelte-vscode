@@ -34,7 +34,7 @@ export async function activate (context: vscode.ExtensionContext)
 
 	subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(liquivelteScheme, liquivelteProvider));
 
-	console.log('Congratulations, your extension "liquivelte" is now active!');
+	console.log('"liquivelte" is activated.');
 
 	const sidebarProvider = new SidebarProvider(context.extensionUri);
 

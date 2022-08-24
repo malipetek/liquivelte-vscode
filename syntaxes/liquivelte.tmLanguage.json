@@ -66,16 +66,16 @@
         }
       ]
     },
-    "L:meta.liquid.liquivelte - meta.lang.liquid - (meta source)": {
+    "L:meta.script.liquivelte - meta.lang.liquid - (meta source)": {
       "patterns": [
         {
-          "begin": "(?\\{%-?\\sliquid\\s",
+          "begin": "(?\\{%-?\\sliquid=%\\}(?!%\\})",
           "end": "(?=-?%\\})",
           "name": "meta.embedded.block.liquivelte",
-          "contentName": "text.html.liquid",
+          "contentName": "source.liquid",
           "patterns": [
             {
-              "include": "text.html.liquid"
+              "include": "source.liquid"
             }
           ]
         }

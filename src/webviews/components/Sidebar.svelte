@@ -343,90 +343,77 @@
         <progress class="progress" />
       {:else}
         <!-- not loading -->
-        {#if stats.configFile}
-          <!-- no config file -->
-          {#if stats.presetsSame}
-            {#if stats.themeFolder}
-              {#if stats.validTheme}
-                <div class="block">
-                  <svg class="icon check-circle" viewBox="0 0 24 24"
-                    ><path
-                      d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2m-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                    /></svg
-                  >
-                  <Filelink folder={true} href={stats.themeFolder}>
-                    <b>Theme</b>
-                  </Filelink> folder found.
-                </div>
-              {:else}
-                <div>
-                  <svg
-                    class="icon blockicon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="24px"
-                    viewBox="0 0 24 24"
-                    width="24px"
-                    fill="#000000"
-                    ><path d="M0 0h24v24H0V0z" fill="none" /><path
-                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
-                    /></svg
-                  >
-                  <span>Theme folder specified but doesn't seem like a theme:</span>
-                  <b>{stats.themeFolder}</b>
-                  <button on:click={checkFolders}>Check again</button>
-                </div>
-              {/if}
-            {:else}
-              <div class="container">
-                <p>
-                  <svg
-                    class="icon blockicon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="24px"
-                    viewBox="0 0 24 24"
-                    width="24px"
-                    fill="#000000"
-                    ><path d="M0 0h24v24H0V0z" fill="none" /><path
-                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
-                    /></svg
-                  >
-                  <span
-                    >Theme folder specified but it doesn't seem like a theme
-                  </span>
-                </p>
-                <div class="block">
-                  <button on:click={cloneTheme}>Initialize it for me</button>
-                </div>
+        {#if stats.presetsSame}
+          {#if stats.themeFolder}
+            {#if stats.validTheme}
+              <div class="block">
+                <svg class="icon check-circle" viewBox="0 0 24 24"
+                  ><path
+                    d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2m-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                  /></svg>
+                <Filelink folder={true} href={stats.themeFolder}>
+                  <b>Theme</b>
+                </Filelink> folder found.
               </div>
-              <div class="container">
+            {:else}
+              <div>
+                <svg
+                  class="icon blockicon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 0 24 24"
+                  width="24px"
+                  fill="#000000"
+                  ><path d="M0 0h24v24H0V0z" fill="none" /><path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
+                  /></svg
+                >
+                <span>Theme folder specified but doesn't seem like a theme:</span>
+                <b>{stats.themeFolder}</b>
                 <button on:click={checkFolders}>Check again</button>
               </div>
             {/if}
           {:else}
-            <div class="container" box>
-              <svg
-                class="icon blockicon"
-                xmlns="http://www.w3.org/2000/svg"
-                height="24px"
-                viewBox="0 0 24 24"
-                width="24px"
-                fill="#000000"
-                ><path d="M0 0h24v24H0V0z" fill="none" /><path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
-                /></svg
-              >
-              Config presets specify different folders for theme.
+            <div class="container">
+              <p>
+                <svg
+                  class="icon blockicon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 0 24 24"
+                  width="24px"
+                  fill="#000000"
+                  ><path d="M0 0h24v24H0V0z" fill="none" /><path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
+                  /></svg
+                >
+                <span
+                  >Theme folder specified but it doesn't seem like a theme
+                </span>
+              </p>
+              <div class="block">
+                <button on:click={cloneTheme}>Initialize it for me</button>
+              </div>
+            </div>
+            <div class="container">
               <button on:click={checkFolders}>Check again</button>
             </div>
           {/if}
         {:else}
           <div class="container" box>
-            You dont have a <b>config.yml</b> in the root.
-            <button on:click={async () => {
-              createFile('config.yml');
-              await wait(1000);
-              checkFolders();
-            }}>Create one for me</button>
+            <svg
+              class="icon blockicon"
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 0 24 24"
+              width="24px"
+              fill="#000000"
+              ><path d="M0 0h24v24H0V0z" fill="none" /><path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"
+              /></svg
+            >
+            Config presets specify different folders for theme.
+            <button on:click={checkFolders}>Check again</button>
           </div>
         {/if}
         {#if stats.srcFolder}
@@ -462,7 +449,7 @@
               await wait(700);
               createFile('src/sections/example-product.liquivelte');
               await wait(700);
-              createFile('src/liquid.js');
+              createFile('src/liquivelte-liquid.js');
               checkFolders();
             }}> Create one for me </button>
           </div>

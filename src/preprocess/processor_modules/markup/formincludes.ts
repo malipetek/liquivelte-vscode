@@ -6,7 +6,9 @@ import uid from '../../../utils/uid';
 
 export default function formProcessor (markup: string, ms: MagicString, { replaceOperations, formIncludes, liquidContent }): ReplaceResult
 {
-  liquidContent = liquidContent.replace(/<(form)(\s[^>]+)>/gim, (a, tagName, content, offset) => {
+  
+  markup.replace(/<(form)(\s[^>]+)>/gim, (a, tagName, content, offset) =>
+  { 
     const line = getLineFromOffset(markup, offset);
 
     let type = '';
@@ -43,7 +45,32 @@ export default function formProcessor (markup: string, ms: MagicString, { replac
 
     ms.overwrite(offset, offset + a.length, `<${tagName} ${content} {...form_props_${id}[index || 0]}>
   {@html form_inputs_${id}[index || 0]}`);
-    // console.log(tagName, hasClass);
+    return '';
+  });
+
+  liquidContent = liquidContent.replace(/<(form)(\s[^>]+)>/gim, (a, tagName, content, offset) => {
+    const line = getLineFromOffset(markup, offset);
+
+    let type = '';
+    let prop = '';
+    const hasType = /type="([^"]+)"/gim.test(content);
+    const hasProp = /prop="([^"]+)"/gim.test(content);
+    if (hasType) {
+      content = content.replace(/\stype="([^"]+)"/gim, (a, t) => {
+        type = t;
+        return ``;
+      });
+    } else {
+      return '';
+    }
+    if (hasProp) {
+      content = content.replace(/\prop="([^"]+)"/gim, (a, t) => {
+        prop = t;
+        return ``;
+      });
+    }
+    var id = `f${uid(a)}`;
+
     return `{% capture form_content %}
     {% form '${type}', ${prop} %}%FC%{% endform %}
     {% endcapture %}

@@ -34,10 +34,15 @@ injections:
     patterns: [{begin: '(?<=>)(?!</)', end: '(?=</)', name: meta.embedded.block.liquivelte,
     contentName: source.js, patterns: [{ include: source.js }]}]
 
-  # ---- Liquid
-  'L:meta.liquid.liquivelte - meta.lang.liquid - (meta source)':
-    patterns: [{begin: '(?\{%-?\sliquid\s', end: '(?=-?%\})', name: meta.embedded.block.liquivelte,
-    contentName: text.html.liquid, patterns: [{ include: text.html.liquid }]}]
+  # (Liquid)
+  'L:meta.script.liquivelte - meta.lang.liquid - (meta source)':
+    patterns: [{begin: '(?\{%-?\sliquid=%\}(?!%\})', end: '(?=-?%\})', name: meta.embedded.block.liquivelte,
+    contentName: source.liquid, patterns: [{ include: source.liquid }]}]
+
+  # # ---- Liquid
+  # 'L:meta.liquid.liquivelte - meta.lang.liquid - (meta source)':
+  #   patterns: [{begin: '(?{%-?\s*liquid\s(?!%})', end: '(?=-?%})', name: meta.embedded.block.liquivelte,
+  #   contentName: text.html.liquid, patterns: [{ include: text.html.liquid }]}]
 
   # Style Languages
   # Stylus | 'stylus' | 'source.stylus'

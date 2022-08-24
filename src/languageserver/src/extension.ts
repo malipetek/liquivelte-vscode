@@ -58,7 +58,7 @@ export function activate (context: ExtensionContext)
                 : path.join(rootPath as string, tempLsPath)
             : undefined;
 
-    const serverModule = require.resolve(lsPath || 'liquivelte-language-server/bin/server.js');
+    const serverModule = require.resolve(lsPath || '@liquivelte/liquivelte-language-server/bin/server.js');
     console.log('Loading server fr ', lsPath, '::', serverModule);
 
     // Add --experimental-modules flag for people using node 12 < version < 12.17

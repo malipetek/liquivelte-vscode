@@ -4,7 +4,6 @@ import { generateAllScripts, generateTemplateScript } from '../generate-theme/pr
 import { fileChangeHandler } from '../utils/state-change-handlers';
 import getThemeDirectory from '../utils/get-theme-directory';
 import { sendStatsDebounced } from '../sidebar/sidebar-provider';
-
 state.set = { watching: false };
 let fileWatcher: vscode.FileSystemWatcher | undefined;
 let themeWatcher: vscode.FileSystemWatcher | undefined;
@@ -22,7 +21,8 @@ state.until['watching'] = () =>
 
 export async function startWatch ()
 {
-  console.log("state['deptree']", state['deptree']);
+  state['watching'] = true;
+
   if (!state['deptree'] || Object.keys(state['deptree']).length === 0) {
     /*
     * If there is not dependency tree, we need to run build once to get the dependency tree
@@ -32,7 +32,6 @@ export async function startWatch ()
 
   const { isTheme, themeDirectory, folders, workspaceFolders } = await getThemeDirectory();
   fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.workspaceFolders[0], 'src/**'));
-  state['watching'] = true;
 
   fileWatcher.onDidChange(async (uri: vscode.Uri) =>
   {
@@ -68,8 +67,8 @@ export async function startWatch ()
     // console.log('templatesToRebuild', templatesToRebuild);
     try {
       await Promise.all(templatesToRebuild.map(async entry =>
-      { 
-        await generateTemplateScript(entry.templateName, layouts.includes(entry.templateName));
+      {
+        await generateTemplateScript(entry.templateName, layouts.includes(entry.templateName), true);
       })).catch(err => console.log('err', err));
     } catch (err) {
       console.log('error happened', err);

@@ -21,7 +21,8 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
     filename = path.parse(filename).name;
 
     modules.push({module, filename});
-
+    
+    return '';
   });
 
   modules.forEach(({ module, filename }) =>

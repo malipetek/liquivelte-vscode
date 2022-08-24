@@ -8,6 +8,7 @@
 
 import { window, workspace, Disposable, TextDocument, Position, SnippetString } from 'vscode';
 
+// @ts-ignore
 import { TextDocumentContentChangeEvent } from 'vscode-languageserver-protocol';
 
 export function activateTagClosing(

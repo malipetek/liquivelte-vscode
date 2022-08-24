@@ -226,10 +226,13 @@ export let ${rawInclude.id};`;
         });
         prependedLines += 2;
         return `${acc}
-export let form_inputs_${formInclude.id};
-export let form_props_${formInclude.id};`}, '')}`);
+  export let form_inputs_${formInclude.id};
+  export let form_props_${formInclude.id};`}, '')}`);
       s.prepend(`
-let index = 0;
+  import cachedLiquid from 'liquivelte-liquid.js';
+  export let lec;
+  const liquid = cachedLiquid(lec);
+  let index = 0;
 `);
 RR.replaceOperations.push({
   was: {

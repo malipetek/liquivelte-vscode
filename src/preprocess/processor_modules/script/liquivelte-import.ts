@@ -47,9 +47,9 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
       const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
       const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
       if (!children) {
-        ms.overwrite(offset, offset + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} />`);
+        ms.overwrite(offset, offset + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
       } else {
-        ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} >`);
+        ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
       }
 
       return '';  
