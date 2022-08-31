@@ -11,7 +11,7 @@
     "schema",
     "translation"
   ],
-  "version": "0.1.1",
+  "version": "1.0.2",
   "license": "MIT",
   "engines": {
     "vscode": "^1.65.0"
@@ -553,6 +553,7 @@
     "@rollup/plugin-typescript": "^8.3.4",
     "@rollup/pluginutils": "^4.2.1",
     "autoprefixer": "^10.4.8",
+    "chokidar": "^3.5.3",
     "debounce": "^1.2.1",
     "debounce-async": "0.0.2",
     "deep-eql": "^4.1.0",
@@ -567,6 +568,7 @@
     "puppeteer-core": "^13.7.0",
     "require-relative": "^0.8.7",
     "rollup": "^2.78.1",
+    "rollup-plugin-css-chunks": "^2.0.3",
     "rollup-plugin-css-only": "^3.1.0",
     "rollup-plugin-scss": "^3.0.0",
     "rollup-plugin-svelte": "^7.1.0",

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import fs from 'fs-extra';
 import path from 'path';
+
 import liquivelteTransformer from '../preprocess/preprocessor';
 import vscode from 'vscode';
 
@@ -8,7 +9,7 @@ import relative from 'require-relative';
 import { createFilter } from '@rollup/pluginutils';
 import { compile, preprocess } from 'svelte/compiler';
 import addCssClassesToLiquid from "./inject-liquid-classes";
-import toCamelCase from './to-camel-case';
+
 import state from './state';
 
 import { SECTION_BLOCKS_LIQUID, CART_JSON_LIQUID } from './liquid-fragments';
@@ -126,9 +127,6 @@ export function liquivelteSveltePlugin (options = {})
 		 */
 		async transform (code, id)
 		{
-			if (/main-product/.test(id)) {
-				console.log('transforming ', id);
-			}
 			if (!filter(id)) return null;
 
 			const extension = path.extname(id);
@@ -270,11 +268,11 @@ export function liquivelteSveltePlugin (options = {})
 		generateBundle: function generateBundle ()
 		{
 			const prebuildDone = state.prebuildDone;
-			console.log('prebuildDone', prebuildDone);
-			if (!prebuildDone) {
-				this.error({ frame: 'This is not a real error. We just stop here for next round of build.' });
-				return null;
-			}
+			// console.log('prebuildDone', prebuildDone);
+			// if (!prebuildDone) {
+			// 	this.error({ frame: 'This is not a real error. We just stop here for next round of build.' });
+			// 	return null;
+			// }
 			if (pkg_export_errors.size > 0) {
 				console.warn(`\n${PREFIX} The following packages did not export their \`package.json\` file so we could not check the "svelte" field. If you had difficulties importing svelte components from a package, then please contact the author and ask them to export the package.json file.\n`);
 				console.warn(Array.from(pkg_export_errors, s => `- ${s}`).join('\n') + '\n');
@@ -321,6 +319,7 @@ export function liquivelteLiquidPlugin (options?)
 		// },
 		generateBundle: async function generateBundle (opts, bundle)
 		{
+			// console.log('generating liquid bundle');
 			const prebuildDone = state.prebuildDone;
 			const watchMode = state.watching;
 
@@ -334,7 +333,7 @@ export function liquivelteLiquidPlugin (options?)
 					}
 				});
 
-			if (!prebuildDone) return;
+			// if (!prebuildDone) return;
 			Array.from(state.preprocess_results_cache).forEach(([key, value]) =>
 			{
 				fs.outputFileSync(key.replace(/\/src\/[^\/]+\//, '/src/.svelte/').replace('.liquivelte', ".svelte"), value.content);
@@ -573,7 +572,7 @@ endfor
 		endif`, '')}
 	endfor
 -%}`;
-					const propsParserScript = `<script>(() => {
+					const propsParserScript = `<script class="liquivelte-prop-script">(() => {
 	var propScript = Shopify.designMode && window.propScriptForDesignMode ? window.propScriptForDesignMode : document.currentScript;
 	${parsePropsFn}
 	${JSONParseFn}
@@ -614,8 +613,12 @@ endfor
 		wrapper.liquid_expression_cache[filter].set(\`\${args.join(',')}\`, value);
 	});
 
-	propScript.previousElementSibling.remove();
-	propScript.remove();
+	if(propScript){
+		propScript.remove();
+	}
+	if(propScript.previousElementSibling) {
+		propScript.previousElementSibling.remove();
+	}
 	})();</script>`;
 
 					const propsContent = `
@@ -643,7 +646,7 @@ ${subImportsRegistryModule.some(v => v.id == 'section$blocks') ? SECTION_BLOCKS_
 					finalLiquidContent = `
 ${liquidPropsParser}
 	{%- unless sub_include -%} 
-		<div class="liquivelte-component ${fileName.replace('.liquid', '')}">
+		<div class="liquivelte-component ${fileName.replace('.liquid', '')}" data-liquivelte-component-name="${fileName.replace('.liquid', '')}">
 	{%- endunless -%}
 ${finalLiquidContent}
 ${propsContent}
@@ -662,4 +665,101 @@ ${propsParserScript}
 			state.theme_imports_cache.clear();
 		}
 	}
+}
+
+import { createFilter } from '@rollup/pluginutils';
+
+export function css(options) {
+  if ( options === void 0 ) options = {};
+
+  var filter = createFilter(options.include || ['**/*.css'], options.exclude);
+  var styles = {};
+  var order = [];
+  var dest = options.output;
+  var changes = 0;
+
+  return {
+    name: 'css',
+    transform: function transform(code, id) {
+      if (!filter(id)) {
+        return
+      }
+
+      // When output is disabled, the stylesheet is exported as a string
+      if (options.output === false) {
+        return {
+          code: 'export default ' + JSON.stringify(code),
+          map: { mappings: '' }
+        }
+      }
+
+      // Track the order that each stylesheet is imported.
+      if (!order.includes(id)) {
+        order.push(id);
+      }
+
+      // Keep track of every stylesheet
+      // Check if it changed since last render
+      if (styles[id] !== code && (styles[id] || code)) {
+        styles[id] = code;
+        changes++;
+      }
+
+      return ''
+    },
+    generateBundle: function (opts, bundle) {
+      // No stylesheet needed
+      if (!changes || options.output === false) {
+        return
+      }
+      changes = 0;
+
+      // Combine all stylesheets, respecting import order
+      // var css = '';
+      // for (var x = 0; x < order.length; x++) {
+      //   var id = order[x];
+      //   css += styles[id] || '';
+      // }
+
+      // Emit styles through callback
+      if (typeof options.output === 'function') {
+        options.output(css, styles, bundle);
+        return
+      }
+
+      if (typeof dest !== 'string') {
+        // Don't create unwanted empty stylesheets
+        if (!css.length) {
+          return
+        }
+
+        // Guess destination filename
+        dest =
+          opts.file ||
+          (Array.isArray(opts.output)
+            ? opts.output[0].file
+            : opts.output && opts.output.file) ||
+          opts.dest ||
+          'bundle.js';
+        if (dest.endsWith('.js')) {
+          dest = dest.slice(0, -3);
+        }
+        dest = dest + '.css';
+			}
+			
+			[...Object.keys(bundle).map(k => bundle[k])].filter(m => m.isEntry).map(m =>
+			{
+				const css = [...m.imports, ...m.dynamicImports].reduce((c, id) =>
+				{
+					const style = Object.keys(styles).find(s => s.indexOf(id.replace(/-hs.+\.js/, '')) > -1);
+					return `${c} ${styles[style] || ''}`;
+				}, '');
+
+				this.emitFile({ type: 'asset', fileName: `${m.fileName.slice(0, -3)}.css`, source: css });
+			});
+
+      // Emit styles to file
+      // this.emitFile({ type: 'asset', fileName: dest, source: css });
+    }
+  }
 }

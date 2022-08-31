@@ -1,9 +1,10 @@
 import vscode from 'vscode';
 import { parseAsYaml } from 'parse-yaml';
-import { getAllIncludes } from '../generate-theme/process-theme';
+import { getAllIncludes } from '../generate-theme/getAllInclues';
 import state from './state';
 
 state.set = { layoutContents: {}, templates: {}, layouts: {} };
+
 export default async function ()
 {
   let themeDirectory = '';
@@ -79,12 +80,12 @@ export default async function ()
     templatesArr = templatesArr.reduce((acc, val) => Array.isArray(val[0]) ? [...acc, ...val] : [...acc, val], []);
     
     templates = (await Promise.all(templatesArr.map(async templateFile => {
-      return srcFolder ? await getAllIncludes(templateFile[0], vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates', templateFile[0]), themeDirectory) : { template: templateFile[0], includes: [] };
+      return srcFolder ? await getAllIncludes(templateFile[0], vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates', templateFile[0]), themeDirectory) : { template: templateFile[0], includes: [], loading: (state.templates[templateFile[0]]?.loading || false) };
     }))).reduce((col, entry) =>
       ({ ...col, [entry.template]: entry }),
       {});
     layouts = (await Promise.all(layoutsArr.map(async templateFile => {
-      return srcFolder ? await getAllIncludes(templateFile[0], vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout', templateFile[0]), themeDirectory, false) : { template: templateFile[0], includes: [] };
+      return srcFolder ? await getAllIncludes(templateFile[0], vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout', templateFile[0]), themeDirectory, false) : { template: templateFile[0], includes: [], loading: (state.templates[templateFile[0]]?.loading || false) };
     }))).reduce((col, entry) =>
       ({ ...col, [entry.template]: entry }),
       {});

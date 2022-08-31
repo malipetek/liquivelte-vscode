@@ -86,12 +86,14 @@ export default function formProcessor (markup: string, ms: MagicString, { replac
     %}
   <${tagName} ${content}{{- form_props -}} >
   {{- additional_inputs -}}
-  <script liquivelte-keep> 
+  <script liquivelte-keep liquivelte-eval> 
     window.liquivelte_form_inputs = window.liquivelte_form_inputs || {};
     window.liquivelte_form_props = window.liquivelte_form_props || {};
     window.liquivelte_form_inputs['form_inputs_${id}'] = [...(window.liquivelte_form_inputs['form_inputs_${id}'] || []),\`{{ additional_inputs | escape }}\`];
     window.liquivelte_form_props['form_props_${id}'] = [...(window.liquivelte_form_props['form_props_${id}'] || []),\`{{ form_props }}\`];
-    document.currentScript.remove();
+    if(document.currentScript){
+      document.currentScript.remove();
+    }
   </script>
   {% assign additional_inputs = '' %}`;
   });

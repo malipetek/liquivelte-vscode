@@ -55,7 +55,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
 
       return '';
     } else {
-      ms.overwrite(offset, offset + a.length, `{ ${expression.replace(/\.size/gim, '.length')} || ''}`);
+      ms.overwrite(offset, offset + a.length, `{ ${expression.replace(/\.size/gim, '.length')} }`);
       replaceOperations.push({
         was: {
           lines: [line]
@@ -82,9 +82,14 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
         {
           return `${e.filter}§{{${i == 0 ? expression : c}}}${e.value ? `, {{${e.value}}}${e.second_value !== undefined ? `, {{${e.second_value}}}` : ''}` : ''}`;
         }, '');
-        return a + ` liquivelte-value-cache="${exp}§{{${expression}${filter||''} }}"`;
+        return a + ` liquivelte-value-cache="${exp}§{{${expression}${filter} }}"`;
     }
     return a;
+  });
+
+  liquidContent = liquidContent.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (a, expression, filter, offset) =>
+  { 
+    return a.replace(/\{\{-/, '{{').replace(/-\}\}/, '}}');
   });
 
   const result: ReplaceResult = {

@@ -38,11 +38,12 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
     index++;
     return `
     {%- capture rawinclude -%}{% include '${include}' ${rest} %}{%- endcapture -%}
-  <script liquivelte-keep>
+  <script liquivelte-keep liquivelte-eval>
   window.liquivelte_rawincludes = window.liquivelte_rawincludes || {};
   window.liquivelte_rawincludes['${id}'] = [...(window.liquivelte_rawincludes['${id}'] || []),\`{{ rawinclude | escape | strip_newlines }}\`];
-  document.currentScript.remove();
-</script>
+  if(document.currentScript){
+    document.currentScript.remove();
+  }</script>
   {%- assign rawinclude = '' -%}`;
   });
 

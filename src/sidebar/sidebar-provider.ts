@@ -46,8 +46,12 @@ function tryJSONParse (str: string)
   return parsed;
 }
 export async function sendStats ()
-      {
-        const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder, templates, layouts } = await getThemeDirectory();
+{
+  const templates_cache = { ...state.templates };
+  const { isTheme, themeDirectory, folders, workspaceFolders, configFile, presetsSame, srcFolder, templates, layouts } = await getThemeDirectory();
+  for (let temp in templates) {
+    templates[temp].loading = templates_cache[temp]?.loading;
+  }
   if (state['sidebar'].webview) {
     state['sidebar'].webview.postMessage({
       type: "stats",
@@ -176,7 +180,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
           }
           case "start-watch": {
-              startWatch();
+            startWatch();
             break;
           }
           case "end-watch": { 

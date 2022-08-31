@@ -59,7 +59,7 @@ export function activate (context: ExtensionContext)
             : undefined;
 
     const serverModule = require.resolve(lsPath || '@liquivelte/liquivelte-language-server/bin/server.js');
-    console.log('Loading server fr ', lsPath, '::', serverModule);
+    // console.log('Loading server fr ', lsPath, '::', serverModule);
 
     // Add --experimental-modules flag for people using node 12 < version < 12.17
     // Remove this in mid 2022 and bump vs code minimum required version to 1.55
