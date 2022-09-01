@@ -74,6 +74,11 @@ export async function sendStats ()
       data: state['buildWarnings']
     });
 
+    state['sidebar'].webview.postMessage({
+      type: "build-errors",
+      data: state['buildErrors']
+    });
+
     if (state['openEditor'] && state['sidebar'].webview) {
       activeFileChangeHandler(state['openEditor']);
     }

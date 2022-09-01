@@ -14,3 +14,9 @@
 
 ## 1.0.2
 - Fixed fallback loader for loading sections as separate modules is kicking in before regular initialization.
+
+## 1.0.3
+- Fixed build errors not coming through. When theres a build error whole build fails, keep an eye on issues tab.
+
+## 1.0.4
+- Fixed css plugin for included modules. Fixed regexp gets exported variables for that without a default value.

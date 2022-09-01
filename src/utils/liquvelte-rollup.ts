@@ -751,8 +751,9 @@ export function css(options) {
 			{
 				const css = [...m.imports, ...m.dynamicImports].reduce((c, id) =>
 				{
-					const style = Object.keys(styles).find(s => s.indexOf(id.replace(/-hs.+\.js/, '')) > -1);
-					return `${c} ${styles[style] || ''}`;
+					const styleModules = Object.keys(styles).filter(s => s.indexOf(id.replace(/-hs.+\.js/, '')) > -1);
+					const style = styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
+					return `${c} ${style || ''}`;
 				}, '');
 
 				this.emitFile({ type: 'asset', fileName: `${m.fileName.slice(0, -3)}.css`, source: css });

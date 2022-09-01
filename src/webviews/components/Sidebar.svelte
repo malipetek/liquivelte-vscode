@@ -148,7 +148,7 @@
           break;
         case "build-errors":
           console.log('build errors came');
-          build_errors = message.data.filter(err => !err.frame.startsWith('This is not a real error'));
+          build_errors = message.data.filter(err => !err.frame || !err.frame.startsWith('This is not a real error'));
           break;
         case "schema-changed":
           if (message.data) {
@@ -301,7 +301,7 @@
             d="M13 9V3.5L18.5 9M6 2c-1.11 0-2 .89-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6z"
           /></svg
         >
-        File
+        Schema
         {#if $schemaChanges}
           <div class="badge">&nbsp;&nbsp;&nbsp;&nbsp;</div>
         {/if}

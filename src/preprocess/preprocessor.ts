@@ -256,7 +256,7 @@ RR.replaceOperations.push({
 
   RR.exportedVariables = [];
   RR.exportedObjectVariables = [];
-  documentContent.replace(/export\slet\s([^=]+)\s*=\s*(\{[^\}]+\})?/gi, (a, v, o) => {
+  documentContent.replace(/export\slet\s([^\=\;]+)\s*(=\s*(\{[^\}]+\}))?/gi, (a, v, o) => {
 
     if (o) {
       RR.exportedObjectVariables.push({ [v.trim()]: eval(`(() => (${o}))()`) });

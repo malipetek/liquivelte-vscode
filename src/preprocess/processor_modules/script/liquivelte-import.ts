@@ -41,6 +41,10 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
     stripArrowFunctions(script).replace(createTagRegex(module, 'gi'), (a, props, children, offset) => {
       // console.log(props, children, offset);
       // liquidImportsModule, subImportsRegistryModule
+      props = props.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (a, expression, filter, offset) =>
+      { 
+        return `{ ${expression.replace(/\.size/gim, '.length')} }`;
+      });
       const liquidImportProps = liquidImportsModule.reduce((c, imp) => `${c} ${imp}={${imp}}`, '') || '';
       // @ts-ignore
       const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';

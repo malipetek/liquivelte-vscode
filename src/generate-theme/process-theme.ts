@@ -205,6 +205,7 @@ async function build (inputs, outputOptionsList, pass)
     bundle = await rollup(inputs);
 
     if (pass === 2) {
+      sendStats();
       await generateOutputs({bundle, outputOptionsList});
     }
   } catch (error) {
