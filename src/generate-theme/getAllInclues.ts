@@ -6,7 +6,7 @@ import state from '../utils/state';
 export async function getAllIncludes (templateName: string, firstFile: vscode.Uri, themeDirectoryProvided: string, followIncludes: boolean = true): Promise<{ [key: string]: any, svelteIncludes: parsedToken[] }>
 {
   const workspaceFolders = vscode.workspace.workspaceFolders;
-
+  let layout = 'theme';
   let allIncludes: parsedToken[] = [];
   const parsedFiles = new Map;
   const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
@@ -27,6 +27,8 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
       parsedFiles.set(file.fsPath, templateFile);
       if (path.parse(file.path).ext === '.json') {
         const json = JSON.parse(templateFile.toString());
+        layout = json.layout === undefined ? layout : json.layout;
+
         const sections = Object.keys(json.sections).map(sectionName => json.sections[sectionName].type);
         /*******************************************************
          * IF IT IS A LIQUIVELTE SECTION WE MAKE IT AN INCLUDE *
@@ -70,6 +72,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
           });
         }
 
+
         parsed.push({
           tagName,
           includeName,
@@ -77,6 +80,14 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
         });
         return '';
       });
+      (templateFile || '').replace(/\{%-?\s(\w+)[\s\n]['"]?([^"'\s]+)['"]?\s*-?%\}/gim, (a, tagName, includeName, afterWithOrComma, offset) => {
+      
+        if (tagName === 'layout') {
+          layout = includeName == 'none' ? false : includeName;
+        }
+
+      });
+
       // @ts-nocheck
       // @ts-ignore
       const includes = parsed
@@ -110,6 +121,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
     liquivelteSections,
     svelteIncludes,
     hasIncludes: !!svelteIncludes.length,
-    loading: state.templates[templateName]?.loading || state.layouts[templateName]?.loading || false
+    loading: state.templates[templateName]?.loading || state.layouts[templateName]?.loading || false,
+    layout
   };
 }

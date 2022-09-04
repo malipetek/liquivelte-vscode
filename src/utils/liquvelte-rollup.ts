@@ -521,7 +521,7 @@ endfor
 						return `
 {%- liquid 
 	assign dynamic_classes = ''
-	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '')}
+	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')}
 			assign dynamic_classes = dynamic_classes | append: ' ${dynamicClasses[exp]}'
 		endif`)}
 -%}

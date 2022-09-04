@@ -238,6 +238,9 @@ async function startWatch (inputs, outputOptionsList, pass)
     watcher.on('event', async event =>
     {
       if (event.code == 'BUNDLE_START') {
+        state['buildErrors'] = [];
+        state['buildWarnings'] = [];
+
         // state.templates
         Object.keys(event.input).map(k => event.input[k]).filter(f => /\.templates\/.+\.js/.test(f)).map(f => f.match(/\.templates\/(.+)\.js/)[1]).forEach(templateName =>
         {

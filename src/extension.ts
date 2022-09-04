@@ -20,6 +20,7 @@ state.set = {
 	buildErrors: [],
 	buildWarnings: [],
 	buildConfig: {},
+	criticalConfig: {}
 };
 
 // this method is called when your extension is activated
@@ -45,6 +46,14 @@ export async function activate (context: vscode.ExtensionContext)
   item.command = "liquivelte.openPreview";
   item.show();
 
+	const criticalConfigPath = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, 'src', '.config',  'critical.json');
+	try {
+		const criticalConfigFile = await vscode.workspace.fs.readFile(criticalConfigPath);
+		state.criticalConfig = JSON.parse(criticalConfigFile.toString());
+	} catch (err) {
+
+	}
+	
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("liquivelte-sidebar", sidebarProvider)
 	);
@@ -96,6 +105,11 @@ export async function activate (context: vscode.ExtensionContext)
 				state['sidebar'] = null;
 			});
 		}
+	};
+
+	state.watch.criticalConfig = async (config) =>
+	{
+		await vscode.workspace.fs.writeFile(criticalConfigPath, Buffer.from(JSON.stringify(config, null, 2)));
 	};
 	
 	

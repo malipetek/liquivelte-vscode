@@ -7,6 +7,7 @@
   import JSONTree from "svelte-json-tree";
   import Schema from "./schema/Schema.svelte";
   import { slide } from "svelte/transition";
+  import debounce from 'lodash.debounce';
   import { addDefaultEmptySettingsFields } from '../utils/settings.js';
 
   import { onMount } from "svelte";
@@ -19,6 +20,9 @@
     schemaChanges,
     hasSchema,
   } from "./store.js";
+import { template } from "lodash";
+import { replace } from "lodash";
+import SidePage from "./SidePage.svelte";
 
   export let vscode;
   export const isDarkTheme = true;
@@ -30,12 +34,14 @@
     });
   }
   let loading = true;
+  let critPageOpen = false;
   let stats = {};
   let currentFile = "";
   let state = {
     infoOpen: false,
   };
   let translations = {};
+  let criticalConfig = {};
 
   let watching = false;
 
@@ -55,7 +61,15 @@
   $: {
     vscode.setState({ page });
   }
-
+  const sendCriticalConfig = debounce(() => {
+    vscode.postMessage({ type: "critical-config", value: criticalConfig });
+  }, 500);
+  $: if(criticalConfig) {
+    sendCriticalConfig();
+  }
+  function genCritical() {
+    vscode.postMessage({ type: "gen-critical", value: undefined });
+  }
   function checkFolders() {
     vscode.postMessage({ type: "get-stats", value: undefined });
   }
@@ -114,7 +128,9 @@
           if (Object.keys(message.stats.buildConfig).length) {
             build_config = message.stats.buildConfig;
           }
+          criticalConfig = message.criticalConfig;
           loading = false;
+          console.log('stats ', stats);
           break;
         case "watch-state":
           watching = message.watching;
@@ -143,6 +159,9 @@
             JSON.parse(JSON.stringify(message.sectionTranslations))
           );
         }
+        case "critical-result":
+          criticalConfig.result = message.result;
+          break;
         case "build-warnings":
           build_warnings = message.data;
           break;
@@ -191,7 +210,7 @@
     initial_build_config = false;
   }
 
-  function debounce(fn, delay) {
+  function _dbnc(fn, delay) {
     let timer;
     return (() => {
       clearTimeout(timer);
@@ -201,10 +220,8 @@
   let debouncingForMore = false;
   $: if ($schemaChanges && watching) {
     debouncingForMore = true;
-    debounce(saveSchema, 3000);
+    _dbnc(saveSchema, 3000);
   }
-
-  $: console.log('debouncingForMore ', debouncingForMore);
 
   const escapeHtml = (unsafe) => {
     return unsafe
@@ -494,6 +511,9 @@
                 Regenerate
               {/if}
             </button>
+            <button on:click={() => critPageOpen = true}>
+              Generate Critical CSS
+            </button>
           </div>
           <hr />
           <div class="block">
@@ -597,14 +617,51 @@
             </Expandable>
           </div>
         {/if}
-        <!-- <Expandable open={true}>
-          <h3 slot="opener" >Generate Critical CSS</h3>
-          <ul>
-            {#each Object.keys(stats.templates) as template}
-              <li> <input id="crit-#{template}" type="checkbox"  /> <label for="crit-#{template}"> { template } </label> </li>
-            {/each}
-          </ul>
-        </Expandable> -->
+          <SidePage bind:open={critPageOpen}>
+            <h3 slot="title" >Generate Critical CSS</h3>
+            <div class="critical-container container">
+              <p>
+                Check the templates you want to generate critical CSS for and provide store password if it is necessary. This process generates css only for liquivelte generated css not all applied css.
+              </p>
+            <div class="store-password-container container" box>
+              <label for="strpwd"> Enter store password if you have one. </label>
+              <input id="strpwd" type="text" bind:value={criticalConfig.store_password} />
+            </div>
+            <ul>
+              {#each Object.keys(stats.templates) as template}
+              {@const [templateName, alternameName] =  [ ...(template.match(/([^\.]+)(?=\.)/g) || []) ] }
+                {#if stats.templates[template].hasIncludes }
+                  <li class="container"> 
+                    <div class="w-100" box>
+                      <div class="flex left">
+                        <input class="no-grow" id="crit-#{template}" type="checkbox" bind:checked={criticalConfig[`${template}-enabled`]} /> 
+                        <label class="grow" for="crit-#{template}"> { template } </label>
+                      </div>
+                    
+                      {#if templateName == 'product' || templateName == 'page' || templateName == 'blog' || templateName == 'article' }
+                        <label for="crit_url#{template}"> Enter a url for {template} </label>
+                        <input id="crit_url#{template}" type="text" bind:value={criticalConfig[`path-for-${template}`]} />
+                      {/if }
+                    </div>
+                  </li>
+                {/if }
+              {/each}
+            </ul>
+            <div class="critical-result" box >
+              <p style="white-space: break-spaces">
+                { criticalConfig.result || '' }
+              </p>
+              <button type="button" on:click={genCritical} disabled={criticalConfig.result == 'loading'} >
+                {#if criticalConfig.result == 'loading' }
+                  <span class="spinner" />
+                {:else}
+                    Generate 
+                {/if}
+              </button>
+            </div>
+          </div>
+        </SidePage>
+
         <!-- not loading -->
       {/if}
     </span>
@@ -720,6 +777,18 @@
   .flex > * {
     flex: 1 1 auto;
   }
+  .shrink {
+    flex-shrink: 1;
+  }
+  .no-shrink {
+    flex-shrink: 0;
+  }
+  .grow {
+    flex-grow: 1;
+  }
+  .no-grow {
+    flex-grow: 0;
+  }
   .relative {
     position: relative;
   }
@@ -779,6 +848,9 @@
   .left,
   .right {
     flex: 0 1 auto;
+  }
+  .flex.left {
+    justify-content: flex-start;
   }
 
   .w-100 {
@@ -881,10 +953,47 @@
     background-color: var(--vscode-debugConsole-warningForeground);
   }
 
-  button {
+  button , label {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
+    cursor: pointer;
   }
 
+  input[type=text] {
+    margin: .5em 0;
+    padding: .2em;
+    background-color: var(--vscode-editor-wordHighlightBackground);
+    
+  }
 
+  input[type=checkbox] {
+    margin: .5em;
+    appearance: none;
+  }
+  input[type=checkbox]:after {
+      content: '';
+      display: block;
+      background-color: #ffffff55;
+      width: 1.2em;
+      z-index: -1;
+      height: 1.2em;
+      top: 0;
+      border-radius: 4px;
+      color: #fff;
+      text-align: center;
+  }
+  input[type=checkbox]:checked:after {
+      content: '✓';
+      background-color: #2196F3;
+  }
+
+  input[type=checkbox]:focus:after {
+      outline: none;
+      box-shadow: 0 0 4px 2px #00BCD4;
+  }
+
+  .critical-container label {
+    display: inline-block;
+    width: auto;
+  }
 </style>

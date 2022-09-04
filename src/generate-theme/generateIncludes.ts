@@ -35,6 +35,7 @@ async function _generateIncludeScripts ({ themeDirectory })
       <script type="module" src="{{ liquivelte_js_source | asset_url }}" defer="defer"></script>
       <link rel="stylesheet" rel="preload" as="style" href="{{ liquivelte_css_source | asset_url }}" />
       {% endif %}
+      {% include 'liquivelte-criticals' with template: template_with_suffix_and_directory %}
       ${layouts[layoutname].hasIncludes ? `
       <script type="module" src="{{ '${layoutname.replace('.liquid', '')}.liquivelte.js' | asset_url }}" defer="defer"></script>
       <link rel="stylesheet" rel="preload" as="style" href="{{ '${layoutname.replace('.liquid', '')}.liquivelte.css' | asset_url }}" />

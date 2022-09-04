@@ -10,6 +10,7 @@ export const sendStatsDebounced = debounce(sendStats, 1000);
 import { exec } from "child_process";
 import state from "../utils/state";
 import clearSchema from "../utils/clear-schema";
+import generateCritical from "../utils/generate-critical";
 
 function execAsync (cmd)
 {
@@ -67,6 +68,7 @@ export async function sendStats ()
         watching: state['watching'],
         buildConfig: state['buildConfig'],
       },
+      criticalConfig: state.criticalConfig
     });
 
     state['sidebar'].webview.postMessage({
@@ -109,7 +111,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
       webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
       
       
-      webviewView.webview.onDidReceiveMessage(async (data) => {
+      webviewView.webview.onDidReceiveMessage(async (data) =>
+      {
         
         switch (data.type) {
           case "get-stats": {
@@ -124,7 +127,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             const sectionTranslations = {};
             const translations = {};
             await Promise.all(localeFolders.map(async file_or_folder =>
-            { 
+            {
               const [name, type] = file_or_folder;
               const [countrycode, default_or_schema_or_json, schema_or_json] = name.split('.');
               
@@ -135,12 +138,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               } else if (default_or_schema_or_json === 'schema') {
                 // section locale file
                 sectionTranslations[countrycode] = tryJSONParse((await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'locales', name))).toString());
-              } else if(default_or_schema_or_json === 'default') {
+              } else if (default_or_schema_or_json === 'default') {
                 // default file
                 if (schema_or_json === 'json') {
                   // default regular locale file
                   translations[countrycode] = tryJSONParse((await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'locales', name))).toString());
-                } else if(schema_or_json === 'schema') {
+                } else if (schema_or_json === 'schema') {
                   // default section locale file
                   sectionTranslations[countrycode] = tryJSONParse((await vscode.workspace.fs.readFile(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, themeDirectory, 'locales', name))).toString());
                 }
@@ -153,7 +156,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             });
             break;
           }
-          case 'regenerate-theme': { 
+          case 'regenerate-theme': {
             await generateAllScripts();
             break;
           }
@@ -218,6 +221,22 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             state['buildConfig'] = data.buildConfig;
             break;
           }
+          case 'critical-config': {
+            state.criticalConfig = data.value;
+            break;
+          }
+          case 'gen-critical': {
+            webviewView.webview.postMessage({
+              type: "critical-result",
+              result: 'loading'
+            });
+            const result = await generateCritical();
+            webviewView.webview.postMessage({
+              type: "critical-result",
+              result
+            });
+            break;
+          }
           case 'create-folder': {
             await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, data.folder));
             break;
@@ -275,7 +294,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                   return str;
               };
                 
-              export default (liquid_expression_cache) => ({
+                export default (liquid_expression_cache) => ({
                   default: (input, fallback) => {
                       let isObject = false;
                       try { isObject = input.constructor === {}.constructor; } catch (err) { }
@@ -297,7 +316,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                       if (!input) {
                           return input = \`//cdn.shopify.com/shopifycloud/shopify/assets/no-image-2048-5e88c1b20e087fb7bbe9a3771824e743c244f437e4f8ba93bbf7b11b53f7824c.gif\`;
                       }
-                      if (input.src) {
+                      while (input.src) {
                           input = input.src;
                       }
                       if (input.image) {
@@ -318,7 +337,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                       return input.replace(/\.([^\.]+)($|\?)/, \`_\${size}.$1?\`);
                   },
                   file_url: (input) => {
-                      if (liquid_expression_cache['file_url'].has\`\${input}\`)) {
+                      if (liquid_expression_cache['file_url'].has(\`\${input}\`)) {
                           return liquid_expression_cache['file_url'].get(\`\${input}\`);
                       }
                       return \`//cdn.shopify.com/s/files/1/0621/4444/6683/files/\${input}?v=\${(Math.random() * 9e15).toString(36)}\`;
