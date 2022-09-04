@@ -1,7 +1,7 @@
 import state from "./state";
 import * as vscode from 'vscode';
-const crittr = require('crittr');
-const puppeteer = require('puppeteer');
+import crittr from 'crittr';
+import puppeteer from 'puppeteer';
 
 export default async function generateCritical ()
 {
