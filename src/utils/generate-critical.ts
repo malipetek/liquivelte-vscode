@@ -82,7 +82,7 @@ export default async function generateCritical ()
       } catch (err) {
 
       } 
-      const url = new URL(baseUrl);
+      const url = new URL(baseUrl.href);
       let path = defaultPaths[templateName] || pathFromConfig;
       let enabled = state.criticalConfig[`${template}-enabled`];
         url.pathname = path;
