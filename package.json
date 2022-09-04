@@ -11,7 +11,7 @@
     "schema",
     "translation"
   ],
-  "version": "1.2.2",
+  "version": "1.2.3",
   "license": "MIT",
   "engines": {
     "vscode": "^1.65.0"
@@ -546,6 +546,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@liquivelte/crittr": "^1.5.0-beta.2",
     "@liquivelte/liquivelte-language-server": "^0.14.1",
     "@rollup/plugin-alias": "^3.1.9",
     "@rollup/plugin-commonjs": "^21.1.0",
@@ -553,21 +554,25 @@
     "@rollup/plugin-typescript": "^8.3.4",
     "@rollup/pluginutils": "^4.2.1",
     "autoprefixer": "^10.4.8",
+    "chalk": "^2.3.2",
     "chokidar": "^3.5.3",
-    "crittr": "^1.5.0-beta.1",
     "debounce": "^1.2.1",
     "debounce-async": "0.0.2",
     "deep-eql": "^4.1.0",
+    "figures": "^2.0.0",
+    "find-chrome-bin": "^1.0.2",
     "fs-extra": "^10.1.0",
     "hash-sum": "^2.0.0",
+    "isobject": "^3.0.1",
+    "load-json-file": "^4.0.0",
     "lodash.debounce": "^4.0.8",
     "magic-string": "^0.25.9",
     "node-sass": "^7.0.1",
     "parse-yaml": "^0.1.0",
+    "pkg-conf": "^2.1.0",
     "postcss": "^8.4.16",
     "postcss-discard-duplicates": "^5.1.0",
     "postcss-import": "^14.1.0",
-    "puppeteer": "^17.0.0",
     "puppeteer-core": "^13.7.0",
     "require-relative": "^0.8.7",
     "rollup": "^2.78.1",
@@ -579,6 +584,7 @@
     "sass": "^1.54.5",
     "signale": "^1.4.0",
     "sourcemap-codec": "^1.4.8",
+    "strip-bom": "^3.0.0",
     "svelte": "^3.49.0",
     "svelte-json-tree": "^0.1.0",
     "svelte-preprocess": "^4.10.7",
@@ -587,12 +593,6 @@
     "typescript": "^4.7.4",
     "typescript-svelte-plugin": "*",
     "uid": "^2.0.0",
-    "vscode-languageclient": "^7.0.0",
-    "chalk": "^2.3.2",
-    "figures": "^2.0.0",
-    "pkg-conf": "^2.1.0",
-    "load-json-file": "^4.0.0",
-    "strip-bom": "^3.0.0",
-    "isobject": "^3.0.1"
+    "vscode-languageclient": "^7.0.0"
   }
 }

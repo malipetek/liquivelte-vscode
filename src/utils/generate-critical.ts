@@ -1,16 +1,20 @@
 import state from "./state";
 import * as vscode from 'vscode';
-import crittr from 'crittr';
-import puppeteer from 'puppeteer';
+import crittr from '@liquivelte/crittr';
+import puppeteer from 'puppeteer-core';
+import { findChrome } from 'find-chrome-bin';
 
 export default async function generateCritical ()
 {
   let browser;
   try {
-
+    // @ts-ignore
+    const { executablePath } = await findChrome();
+    
     const baseUrl = new URL('http://127.0.0.1:9292');
     browser = await puppeteer.launch({
-      headless: true
+      headless: true,
+      executablePath
     });
 
     let connectToBrowser = () => puppeteer.connect({
