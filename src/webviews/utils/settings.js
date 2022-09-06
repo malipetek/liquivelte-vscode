@@ -74,7 +74,7 @@
     const type = setting.type;
     const _setting = { ...setting };
     for(let key in _setting) {
-      if(key !== 'type' && setting_keys[type].indexOf(key) === -1) {
+      if(key !== 'type' && setting_keys[type] && setting_keys[type].indexOf(key) === -1) {
         delete _setting[key];
       }
     }

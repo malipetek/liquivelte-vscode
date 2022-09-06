@@ -30,7 +30,8 @@ state.set = {
 	liquivelte_imports_cache: new Map,
 	theme_imports_cache: new Map,
 	main_imports_cache: new Map,
-	preprocess_results_cache: new Map
+	preprocess_results_cache: new Map,
+	schema_imports_cache: new Map
 };
 
 /**
@@ -81,6 +82,11 @@ export function liquivelteSveltePlugin (options = {})
 			} else if (path.parse(importee).ext === '.liquivelte' && path.parse(importer).ext !== '.liquivelte') {
 				const main_import = importee.replace('.liquivelte', '.liquid');
 				state.main_imports_cache.set(importer, main_import);
+			}
+			if (importee.slice(-11) === 'schema.json' && path.parse(importer).ext === '.liquivelte') { 
+				if (path.isAbsolute(importee)) {
+					state.schema_imports_cache.set(importer, new Set([...(state.schema_imports_cache.get(importer) || []), importee]));
+				}
 			}
 			if (cache_emit.has(importee)) return importee;
 			if (!importer || importee[0] === '.' || importee[0] === '\0' || path.isAbsolute(importee)) return null;
@@ -239,6 +245,7 @@ export function liquivelteSveltePlugin (options = {})
 			const liquidContent = result?.liquidContent;
 			compiled.js.code += `\nimport ${JSON.stringify(liquidfname)};\n`;
 			cache_emit.set(liquidfname, { code: liquidContent });
+
 			// @ts-ignore
 			result.svelteCssHashes = svelteCssHashes[id];
 			state.theme_imports_cache.set(liquidfname, result || {});
@@ -444,18 +451,55 @@ endfor
 						finalLiquidContent = finalLiquidContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, '');
 					}
 
+					function getImportedSchemas (dep)
+					{
+						let jsonSchemas = [];
+						if (state.schema_imports_cache.has(dep)) {
+							
+							jsonSchemas = [...state.schema_imports_cache.get(dep)];
+
+							jsonSchemas = jsonSchemas.map((schemaPath) => fs.readFileSync(schemaPath));
+
+						}
+						return jsonSchemas.map(schemaJson =>
+							{
+								try {
+									return JSON.parse(schemaJson);
+								} catch (err) {
+									console.log('schema could not be parsed', schemaJson);
+									return false;
+								}
+							}).filter(e => !!e);
+					}
+
+					function mergeSchemas (schema, subSchema)
+					{
+						if (subSchema.type) {
+							schema = { ...schema, blocks: [...(schema.blocks), subSchema] };
+						} else {
+							schema = {
+								...schema, settings: [...(schema.settings || []), ...(subSchema.name ? [{
+									type: "header",
+									content: subSchema.name,
+								}] : []), ...(subSchema.settings || [])]
+							};
+						}
+						return schema;
+					}
+					
 					finalLiquidContent = finalLiquidContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
 					{ 
 						const subSchemas = imp.deps.filter(dep => state.preprocess_results_cache.has(dep)).map(dep =>
 						{
 							const depImpl = state.preprocess_results_cache.get(dep);
 							const fileContent = depImpl.liquidContent;
+							const jsonSchemas = getImportedSchemas(dep);
 
 							if (/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim.test(fileContent)) {
 								let schemaJson;
 								fileContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
 								{
-									schemaJson = content
+									schemaJson = content;
 									return '';
 								});
 								let schema = false;
@@ -464,39 +508,24 @@ endfor
 								} catch (err) {
 									console.log('schema could not be parsed', schemaJson);
 								}
-								return schema;
+								
+								return jsonSchemas.reduce((s, subSchema) => mergeSchemas(s, subSchema) ,schema);
 							}
 							// if no schema return false
 							return false;
 						}).filter(e => !!e);
 
 						let schema = JSON.parse(content);
-
-						subSchemas.forEach(subSchema =>
-						{ 
-							if (subSchema.type) {
-								schema = { ...schema, blocks: [...(schema.blocks), subSchema] };
-							} else {
-								schema = {
-									...schema, settings: [...(schema.settings || []), ...(subSchema.name ? [{
-										type: "header",
-										content: subSchema.name,
-									}] : []), ...(subSchema.settings || [])]
-								};
-							}
-						});
+						const importedSchemas = getImportedSchemas(id.replace(/\.liquid$/, '.liquivelte'));
+						schema = subSchemas.concat(importedSchemas).reduce((s, subSchema) => mergeSchemas(s, subSchema), schema);
 						return a.replace(content, JSON.stringify(schema, null, 2));
 					});
 
-					finalLiquidContent = finalLiquidContent.replace(/<(\w+)(\s[^>]+)>/gim, (a, tagName, content) =>
+					finalLiquidContent = finalLiquidContent.replace(/<(\w+)((\s([^>]*\{\{-?[^\}]+>[^\}]+\}\})|[^>])+)>/gim, (a, tagName, content) =>
 					{
 						const dynamicClasses = {};
 						content = content.replace(/\s(class:?([^=]+)?="([^"]+)")/gim, (_a, dynamicOrRegularClass, className, expression) =>
 						{
-							// console.log(_a);
-							// console.log(dynamicOrRegularClass);
-							// console.log(className);
-							// console.log(expression);
 							expression = expression.replace(/(\{\{-?)|(-?\}\})/g, '').trim();
 							if (className) {
 								dynamicClasses[expression] = className;
@@ -523,7 +552,8 @@ endfor
 	assign dynamic_classes = ''
 	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')}
 			assign dynamic_classes = dynamic_classes | append: ' ${dynamicClasses[exp]}'
-		endif`)}
+		endif`).join(`
+`)}
 -%}
 <${tagName} ${content}>`;
 					});
@@ -763,4 +793,30 @@ export function css(options) {
       // this.emitFile({ type: 'asset', fileName: dest, source: css });
     }
   }
+}
+
+export function json(options) {
+  if ( options === void 0 ) options = {};
+
+  var filter = createFilter(options.include, options.exclude);
+  var indent = 'indent' in options ? options.indent : '\t';
+	const cache_emit = new Map;
+
+  return {
+    name: 'json',
+		load (id)
+		{
+			return cache_emit.get(id) || null;
+		},
+    // eslint-disable-next-line no-shadow
+    transform(json, id) {
+      if (id.slice(-11) !== 'schema.json' || !filter(id)) { return null; }
+
+			cache_emit.set(id, json);
+			return {
+				code: '',
+				map: { mappings: '' }
+			};
+    }
+  };
 }

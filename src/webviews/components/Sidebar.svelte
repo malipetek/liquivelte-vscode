@@ -711,7 +711,7 @@ import SidePage from "./SidePage.svelte";
                   <Expandable open={true}>
                     <h4 slot="opener" class="warning-label">{build_errors_by_file[file][pos].message || build_errors_by_file[file][pos].code}</h4>
                     <code class="warning-text warning-frame">
-                      {build_errors_by_file[file][pos].message}
+                      <p style="margin-bottom: 1em; font-size: 1.4em"> {build_errors_by_file[file][pos].message || build_errors_by_file[file][pos]['pluginCode']} </p>
                       {#each (build_errors_by_file[file][pos].frame || "").split("\n") as line}
                         <span class="nowrap">
                           {@html escapeHtml(line.replace("^", "👆")).replace(
@@ -899,7 +899,7 @@ import SidePage from "./SidePage.svelte";
   }
 
   .warning-frame {
-    padding: 0.5em 0.3em 0.5em 1em;
+    /* padding: 0.5em 0.3em 0.5em 1em; */
   }
 
   .badge {

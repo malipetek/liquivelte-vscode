@@ -20,3 +20,6 @@
 
 ## 1.0.4
 - Fixed css plugin for included modules. Fixed regexp gets exported variables for that without a default value.
+
+# 1.2.6
+- Schema.json files, fixed schema editor, fixed props with arrow functions issue.

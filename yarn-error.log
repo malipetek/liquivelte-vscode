@@ -1,5 +1,5 @@
 Arguments: 
-  /usr/local/bin/node /usr/local/bin/yarn add find-chrome-bin
+  /usr/local/bin/node /usr/local/bin/yarn add @rollup/plugin-json
 
 PATH: 
   /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/go/bin:/Library/Apple/usr/bin
@@ -30,7 +30,7 @@ npm manifest:
       "schema",
       "translation"
     ],
-    "version": "1.2.3",
+    "version": "1.2.6",
     "license": "MIT",
     "engines": {
       "vscode": "^1.65.0"
@@ -579,6 +579,7 @@ npm manifest:
       "debounce-async": "0.0.2",
       "deep-eql": "^4.1.0",
       "figures": "^2.0.0",
+      "find-chrome-bin": "^1.0.2",
       "fs-extra": "^10.1.0",
       "hash-sum": "^2.0.0",
       "isobject": "^3.0.1",
@@ -2355,6 +2356,11 @@ Lockfile:
     integrity sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==
     dependencies:
       to-regex-range "^5.0.1"
+  
+  find-chrome-bin@^1.0.2:
+    version "1.0.2"
+    resolved "https://registry.yarnpkg.com/find-chrome-bin/-/find-chrome-bin-1.0.2.tgz#cc4bebaa40e730a29be25757a608eb3f7ab78ad9"
+    integrity sha512-sqi+tkA5pqk9udwPfFUskoE8y3R8XulX7EZUNJuotJguURBefhYaHdRWy/pDHD0CXgskS5hTx/GxYuw08gmY7Q==
   
   find-up@5.0.0:
     version "5.0.0"

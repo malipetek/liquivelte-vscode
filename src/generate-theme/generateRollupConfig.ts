@@ -8,11 +8,12 @@ import alias from '@rollup/plugin-alias';
 import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
 import { css } from '../utils/liquvelte-rollup';
+
 // import css from 'rollup-plugin-css-chunks';
 import cleancss from 'postcss-discard-duplicates';
 import scss from 'rollup-plugin-scss';
 import preprocess from 'svelte-preprocess';
-import { liquivelteLiquidPlugin, liquivelteSveltePlugin } from '../utils/liquvelte-rollup';
+import { liquivelteLiquidPlugin, liquivelteSveltePlugin, json } from '../utils/liquvelte-rollup';
 import uid from '../utils/uid';
 
 const tailwind = require("tailwindcss");
@@ -139,7 +140,7 @@ export const inputOptions = async () =>
   return {
   input: 'will be set later',
   treeshake: false,
-  plugins: [
+    plugins: [
     liquivelteSveltePlugin({
       preprocess: liquiveltePreprocessor,
       emitCss: true
@@ -168,6 +169,7 @@ export const inputOptions = async () =>
       browser: true,
       rootDir: srcRoot.fsPath,
     }),
+    json({}),
     commonjs(),
     (state['buildConfig'].is_ts &&
       typescript({

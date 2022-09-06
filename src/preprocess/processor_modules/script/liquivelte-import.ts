@@ -37,35 +37,40 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
 
   modules.forEach(({ module, filename }) =>
   {
-    module = module.replace(/\{|\}/g, '');
-    stripArrowFunctions(script).replace(createTagRegex(module, 'gi'), (a, props, children, offset) => {
-      // console.log(props, children, offset);
-      // liquidImportsModule, subImportsRegistryModule
-      props = props.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (a, expression, filter, offset) =>
-      { 
-        return `{ ${expression.replace(/\.size/gim, '.length')} }`;
+    {
+      module = module.replace(/\{|\}/g, '');
+      const { transformed, transformOffset } = stripArrowFunctions(script);
+      transformed.replace(createTagRegex(module, 'gi'), (a, props, children, offset) =>
+      {
+        // console.log(props, children, offset);
+        // liquidImportsModule, subImportsRegistryModule
+        props = props.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (_a, expression, filter, offset) =>
+        {
+          return `{ ${expression.replace(/\.size/gim, '.length')} }`;
+        });
+        const liquidImportProps = liquidImportsModule.reduce((c, imp) => `${c} ${imp}={${imp}}`, '') || '';
+        // @ts-ignore
+        const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
+        const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
+        const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
+        if (!children) {
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
+        } else {
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
+        }
+
+        return '';
       });
-      const liquidImportProps = liquidImportsModule.reduce((c, imp) => `${c} ${imp}={${imp}}`, '') || '';
-      // @ts-ignore
-      const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
-      const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
-      const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
-      if (!children) {
-        ms.overwrite(offset, offset + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
-      } else {
-        ms.overwrite(offset, offset + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
-      }
+    }
 
-      return '';  
-    });
-
-    liquidContent = stripArrowFunctions(liquidContent).replace(createTagRegex(module, 'gi'), (a, props, children, offset) =>
+    const { transformed, transformOffset } = stripArrowFunctions(liquidContent);
+    liquidContent = transformed.replace(createTagRegex(module, 'gi'), (a, props, children, offset) =>
     {
       let propsParsed = parseProps(props);
       Object.keys(propsParsed).forEach(key => propsParsed[key] = putBackArrowFunctions(propsParsed[key]));
 
       // count newlines
-      const line = getLineFromOffset(script, offset);
+      const line = getLineFromOffset(script, transformOffset(offset));
       // ms.overwrite(offset, offset + a.length, a);
       replaceOperations.push({
         was: {

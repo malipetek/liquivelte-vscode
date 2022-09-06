@@ -27,13 +27,14 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
 
   modules.forEach(({ module, filename }) =>
   {
-    liquidContent = stripArrowFunctions(liquidContent).replace(createTagRegex(module, 'gi'), (a, props, children, offset) =>
+    const { transformed, transformOffset } = stripArrowFunctions(liquidContent);
+    liquidContent = transformed.replace(createTagRegex(module, 'gi'), (a, props, children, offset) =>
     {
       let propsParsed = parseProps(props);
       Object.keys(propsParsed).forEach(key => propsParsed[key] = putBackArrowFunctions(propsParsed[key]));
 
       // count newlines
-      const line = getLineFromOffset(script, offset);
+      const line = getLineFromOffset(script, transformOffset(offset));
       // ms.overwrite(offset, offset + a.length, a);
       replaceOperations.push({
         was: {

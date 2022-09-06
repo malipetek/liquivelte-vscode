@@ -12,12 +12,14 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
   {
     const line = getLineFromOffset(markup, offset);
     var id = `rawinclude_${uid(a)}`;
-    rawIncludeRegistry.push({
-      id,
-      include,
-      rest
-    });
-    rawIncludes.push(id);
+    if (!rawIncludeRegistry.some(r => r.id === id)) {
+      rawIncludeRegistry.push({
+        id,
+        include,
+        rest
+      });
+      rawIncludes.push(id);
+    }
     ms.overwrite(offset, offset + a.length, `{@html ${id}[index || 0]}`);
     replaceOperations.push({
       was: {

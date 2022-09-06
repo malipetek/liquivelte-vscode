@@ -88,7 +88,9 @@ export async function generateAllScripts ()
     for (let layoutName of layouts.filter(e => e[1] === 1)) {
       state.layouts[layoutName[0]] = { loading: true };
     }
-
+    if (!state.watching && !state.watcher) {
+      deleteHashedFiles();
+    }
     await build({
       ...inputOpts,
       input,
@@ -291,73 +293,19 @@ async function startWatch (inputs, outputOptionsList, pass)
 
 }
 
-function deleteOldChunks (temlateName, output)
+function deleteHashedFiles ()
 {
   try {
     const files = fs.readdirSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/`);
-    const chunkFiles = [...output].filter(f => f.type === 'chunk');
 
-    const moduleFiles = files.filter(file => /-hs([^\.]+)\./.test(file) && state.outputs[temlateName].includes(file));
-    const noModuleFiles = files.filter(file => /-hs([^\.]+)\./.test(file) && state.outputs[temlateName].includes(file));
+    const moduleFiles = files.filter(file => /-hs([^\.]+)\./.test(file));
     
-    // TODO: Deleting old chunks is deleting shared chunks with multiple builds
-      chunkFiles.forEach(chunkFile =>
-      {
-        const fileName = chunkFile.fileName;
-        if (!/-hs([^\.]+)\./.test(chunkFile.fileName)) return;
-        
-        const [, currentFileName, currentId] = fileName.match(/(.+)-hs([^\.]+)\./);
-        if (currentId === '000000') return;
-        if (/\.nm/.test(chunkFile.fileName)) {
-          noModuleFiles.forEach(file =>
-          {
-            if (!/-hs([^\.]+)\./.test(file) || !/\.nm/.test(file)) return;
-            const [, fileName, id] = file.match(/(.+)-hs([^\.]+)\./);
-            if (fileName == currentFileName && id != currentId) {
-              fs.unlinkSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/${file}`);
-            }
-          });
-        } else {
-          moduleFiles.forEach(file =>
-          {
-            if (!/-hs([^\.]+)\./.test(file) || /\.nm/.test(file)) return;
-            const [, fileName, id] = file.match(/(.+)-hs([^\.]+)\./);
-            if (fileName == currentFileName && id != currentId) {
-              fs.unlinkSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/${file}`);
-            }
-          });
-        }
-      
-        //     // if (file.indexOf(`${fileName}-hs`) !== -1 && file !== currentFileName) {
-        //     //   console.log('will delete 1', file);
-        //     //   try {
-        //     //     fs.unlinkSync(`${opts.dir}/${file}`);
-        //     //   } catch (e) {
-        //     //     // whatever
-        //     //   }
-        //     // }
-      });
+    moduleFiles.forEach(file =>
+    {
+      fs.unlinkSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/${file}`);
 
-    // nomoduleFiles.forEach(file =>
-    // {
-    //   chunkFiles.forEach(chunkFile =>
-    //   {
-    //     // convert file path to file name
-    //     if (!chunkFile.facadeModuleId) return;
-    //     const fileName = path.parse(chunkFile.facadeModuleId).name;
-    //     const currentFileName = chunkFile.fileName;
-    //     if (currentFileName.indexOf('nomodule') === -1) { return; }
+    });
 
-    //     if (file.indexOf(`${fileName}-hs`) !== -1 && file !== currentFileName) {
-    //       console.log('will delete 2', file);
-    //       try {
-    //         fs.unlinkSync(`${opts.dir}/${file}`);
-    //       } catch (e) {
-    //         // whatever
-    //       }
-    //     }
-    //   });
-    // });
   } catch (e) {
     console.error(e);
   }

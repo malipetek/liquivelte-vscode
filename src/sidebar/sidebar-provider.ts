@@ -163,10 +163,13 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           case "save-schema": {
             const currentFile = await vscode.workspace.fs.readFile(vscode.Uri.parse(data.file));
             const content = currentFile.toString();
-            const newContent = content.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
+            const isJSonSchema = data.file.slice(-11) === 'schema.json';
+
+            clearSchema(data.schema);
+            const schemaStringified = JSON.stringify(data.schema, null, 2);
+            
+            const newContent = isJSonSchema ? schemaStringified : content.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, (a, content, offset) =>
             {
-              clearSchema(data.schema);
-              const schemaStringified = JSON.stringify(data.schema, null, 2);
               return `{% schema %}\n${schemaStringified}\n{% endschema %}`;
             });
 

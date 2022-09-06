@@ -42,7 +42,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
         return `liquid.${e.filter}(${i == 0 ? expression : c}${e.value ? `, ${e.value}${e.second_value !== undefined ? `, ${e.second_value}` : ''}` : ''})`;
       }, '');
 
-      ms.overwrite(offset, offset + a.length, `{ ${exp.replace(/\.size/gim, '.length')} }`);
+      ms.overwrite(offset, offset + a.length, `{ ${exp.replace(/\.size/gim, '.length').replace(/\sand\s/gim, ' && ').replace(/\sor\s/gim, ' || ')} }`);
       replaceOperations.push({
         was: {
           lines: [line]
@@ -55,7 +55,7 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
 
       return '';
     } else {
-      ms.overwrite(offset, offset + a.length, `{ ${expression.replace(/\.size/gim, '.length')} }`);
+      ms.overwrite(offset, offset + a.length, `{ ${expression.replace(/\.size/gim, '.length').replace(/\sand\s/gim, ' && ').replace(/\sor\s/gim, ' || ')} }`);
       replaceOperations.push({
         was: {
           lines: [line]

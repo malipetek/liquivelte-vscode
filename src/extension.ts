@@ -109,7 +109,9 @@ export async function activate (context: vscode.ExtensionContext)
 
 	state.watch.criticalConfig = async (config) =>
 	{
-		await vscode.workspace.fs.writeFile(criticalConfigPath, Buffer.from(JSON.stringify(config, null, 2)));
+		if (Object.keys(config || {}).length) {
+			await vscode.workspace.fs.writeFile(criticalConfigPath, Buffer.from(JSON.stringify(config, null, 2)));
+		}
 	};
 	
 	
