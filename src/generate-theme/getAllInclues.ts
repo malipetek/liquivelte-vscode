@@ -12,6 +12,12 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
   const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
   const liquivelteSectionFolders = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).filter(pair => pair[1] == 2).map(pair => pair[0]);
 
+
+  function checkLiquivelteInclude (e)
+  {
+    return e.includeName === 'liquivelte' || (e.tagName === 'section' && (liquivelteSections.includes(`${e.includeName}.liquivelte`) || liquivelteSections.includes(e.includeName)));
+  }
+
   async function getIncludes (file: vscode.Uri)
   {
     try {
@@ -95,13 +101,14 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
 
       // console.log(file.path.split('/').pop(), ' includes ', parsed);
       if (includes.length) {
-        allIncludes = [...allIncludes, ...includes];
+        allIncludes = [...allIncludes, ...includes.map(block => ({...block, isFolder: block.tagName === 'section' && liquivelteSectionFolders.indexOf(block.includeName) !== -1 }))];
         await Promise.all(includes.map(async block =>
         {
+          const isLiquivelteInclude = checkLiquivelteInclude(block);
           const includeUri = vscode.Uri.joinPath(block.tagName === 'section' ? sectionsFolder : snippetsFolder, `${block.includeName}.liquid`);
           // console.log('calling sub include', includeUri.path.split('/').pop());
 
-          if (followIncludes && !parsedFiles.has(includeUri.fsPath)) {
+          if (followIncludes && !parsedFiles.has(includeUri.fsPath) && !isLiquivelteInclude) {
             await getIncludes(includeUri);
           }
         }));
@@ -113,7 +120,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
 
   await getIncludes(firstFile);
 
-  let svelteIncludes = allIncludes.filter(e => e.includeName === 'liquivelte' || (e.tagName === 'section' && (liquivelteSections.includes(`${e.includeName}.liquivelte`) || liquivelteSections.includes(e.includeName))));
+  let svelteIncludes = allIncludes.filter(e => checkLiquivelteInclude(e));
 
   return {
     template: templateName,

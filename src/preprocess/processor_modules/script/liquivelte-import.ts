@@ -44,7 +44,7 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
       {
         // console.log(props, children, offset);
         // liquidImportsModule, subImportsRegistryModule
-        props = props.replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (_a, expression, filter, offset) =>
+        props = (props||'').replace(/\{\{-\s*(.*?)\s*(\|[^\|].*?)?-\}\}/gim, (_a, expression, filter, offset) =>
         {
           return `{ ${expression.replace(/\.size/gim, '.length')} }`;
         });

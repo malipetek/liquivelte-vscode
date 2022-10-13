@@ -23,3 +23,14 @@
 
 # 1.2.6
 - Schema.json files, fixed schema editor, fixed props with arrow functions issue.
+
+# 1.3.0
+- Rollup plugins adjusted for better performance + schema inheritance fixing.
+- Now it picks up tailwind.config.js from workspace folder.
+- Some error messages fixed. error.messages and error.stack were being swallowed by JSON.stringify for some reason.
+
+# 1.3.1
+- Solved issue with importing `schema.json` files.
+
+# 1.3.2
+- Solved folder section include issue from liquid entry files.

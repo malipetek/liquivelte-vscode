@@ -38,9 +38,33 @@ export async function generateAllScripts ()
   state['buildWarnings'] = [];
 
   await doBuildAllTemplateOutputs();
-
+  function deleteUnusedTemplateEntries (input)
+  {
+    try {
+      const templateFiles =fs.readdirSync(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates').fsPath);
+      const sectionFiles = fs.readdirSync(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.sections').fsPath);
+      const currentInputs = Object.keys(input).map(k => input[k]).map(entry => [...entry.match(/([^\/]+)\/([^\/]+)\.js$/)].slice(1));
+      templateFiles.forEach(file =>
+      {
+        if (currentInputs.filter(([location, filename]) => location === '.templates').map(([, filename]) => `${filename}.js`).indexOf(file) < 0) {
+          // should remove 
+          fs.unlinkSync(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', file).fsPath);
+        }
+      });
+      sectionFiles.forEach(file =>
+      {
+        if (currentInputs.filter(([location, filename]) => location === '.sections').map(([, filename]) => `${filename}.js`).indexOf(file) < 0) {
+          // should remove 
+          fs.unlinkSync(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.sections', file).fsPath);
+        }
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
   async function doBuildAllTemplateOutputs ()
   {
+    
     let input = {};
     for (let template of templates.filter(e => e[1] === 1)) {
       const inputEntry = await generateTemplateEntry(template[0], false);
@@ -70,6 +94,9 @@ export async function generateAllScripts ()
         [section]: sectionEntryPath.fsPath
       };
     }
+
+    deleteUnusedTemplateEntries(input);
+
     const allSectionsLoaderContent = await generateAllSectionsScript(liquivelteSections);
     const allSectionsLoaderPath = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets',  'liquivelte-sections-loader.js.liquid');
     await vscode.workspace.fs.writeFile(allSectionsLoaderPath, Buffer.from(allSectionsLoaderContent));
@@ -88,13 +115,6 @@ export async function generateAllScripts ()
     for (let layoutName of layouts.filter(e => e[1] === 1)) {
       state.layouts[layoutName[0]] = { loading: true };
     }
-    if (!state.watching && !state.watcher) {
-      deleteHashedFiles();
-    }
-    await build({
-      ...inputOpts,
-      input,
-    }, (await outputOptionsList()), 1);
 
     if (state.watching && !state.watcher) {
       await startWatch({
@@ -102,6 +122,7 @@ export async function generateAllScripts ()
         input,
       }, (await outputOptionsList()), 2);
     } else {
+      deleteHashedFiles();
       await build({
         ...inputOpts,
         input,
@@ -212,7 +233,7 @@ async function build (inputs, outputOptionsList, pass)
     }
   } catch (error) {
     // do some error reporting
-    state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify(error))];
+    state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify({...error, message: error.message, stack: error.stack}))];
     // console.error('build error', error);
   }
   if (bundle) {
@@ -273,7 +294,7 @@ async function startWatch (inputs, outputOptionsList, pass)
         // event.result.write();
       }
       if (event.code == 'ERROR') { 
-        state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify(event.error))];
+        state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify({...event.error, message: event.error.message, stack: event.error.stack}))];
       }
       if (event.result) {
         event.result.close();
@@ -287,7 +308,7 @@ async function startWatch (inputs, outputOptionsList, pass)
     // }
   } catch (error) {
     // do some error reporting
-    state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify(error))];
+    state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify({...error, message: error.message, stack: error.stack}))];
     // console.error('build error', error);
   }
 
@@ -303,7 +324,6 @@ function deleteHashedFiles ()
     moduleFiles.forEach(file =>
     {
       fs.unlinkSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/${file}`);
-
     });
 
   } catch (e) {

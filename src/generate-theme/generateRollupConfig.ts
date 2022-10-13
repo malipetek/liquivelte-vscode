@@ -11,9 +11,10 @@ import { css } from '../utils/liquvelte-rollup';
 
 // import css from 'rollup-plugin-css-chunks';
 import cleancss from 'postcss-discard-duplicates';
-import scss from 'rollup-plugin-scss';
+import sass from 'sass'; 
+// import scss from 'rollup-plugin-scss';
 import preprocess from 'svelte-preprocess';
-import { liquivelteLiquidPlugin, liquivelteSveltePlugin, json } from '../utils/liquvelte-rollup';
+import { liquivelteSveltePlugin, json } from '../utils/liquvelte-rollup';
 import uid from '../utils/uid';
 
 const tailwind = require("tailwindcss");
@@ -39,7 +40,7 @@ export async function generateTemplateEntry (templateName, isLayout)
     templateName = templateName.replace(/\//, '-');
     const templateNameWithoutExtension = templateName.replace(/\.(liquid|json)/g, '');
 
-      /*
+    /*
     * Generate the script for the template
     * generate entry script
     */
@@ -83,15 +84,24 @@ export const inputOptions = async () =>
   const srcRoot = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src');
   // see below for details on these options
   const production = !state.watching;
+  const tailwindConfigUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'tailwind.config.js');
+  const tailwindConfigFromWorkspaceFile = (await vscode.workspace.fs.readFile(tailwindConfigUri)).toString();
+  let tailwindConfigFromWorkspace = {};
+  try {
+    if (tailwindConfigFromWorkspaceFile) {
+      tailwindConfigFromWorkspace = (await import(tailwindConfigUri.fsPath)).default;
+    }
+  } catch (err) {
+    vscode.window.showErrorMessage('Could not import tailwind.config.js' + `
+    ${err.message}`);
+  }
 
   const tailwindOptionsSvelte = {
+    ...tailwindConfigFromWorkspace,
     future: {
       purgeLayersByDefault: true,
       removeDeprecatedGapUtilities: true,
     },
-    plugins: [
-  
-    ],
     content: [
       vscode.Uri.joinPath(workspaceFolders[0].uri, 'src').fsPath + "/**/*.svelte",
   
@@ -99,13 +109,11 @@ export const inputOptions = async () =>
   };
   
   const tailwindOptionsLiquivelte = {
+    ...tailwindConfigFromWorkspace,
     future: {
       purgeLayersByDefault: true,
       removeDeprecatedGapUtilities: true,
     },
-    plugins: [
-  
-    ],
     content: [
       purgePath,
     ]
@@ -141,10 +149,11 @@ export const inputOptions = async () =>
   input: 'will be set later',
   treeshake: false,
     plugins: [
-    liquivelteSveltePlugin({
-      preprocess: liquiveltePreprocessor,
-      emitCss: true
-    }),
+      liquivelteSveltePlugin({
+        themeDirectory: path.join(workspaceFolders[0].uri.fsPath, themeDirectory),
+        preprocess: liquiveltePreprocessor,
+        emitCss: true
+      }),
     svelte({
       preprocess: sveltePreprocessor,
       compilerOptions: {
@@ -157,9 +166,6 @@ export const inputOptions = async () =>
     //   scss({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }) :
     //   css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` })),
     css({}),
-    liquivelteLiquidPlugin({
-      themePath: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory).fsPath
-    }),
     alias({
       entries: [
         { find: 'liquivelte-liquid.js', replacement: path.resolve(srcRoot.fsPath, 'liquivelte-liquid.js') },
