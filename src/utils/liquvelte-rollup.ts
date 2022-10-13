@@ -487,8 +487,9 @@ function outpusLiquidAndSchemas (module)
 	// console.log('wrapper', wrapper);
 	// console.log('parsing props for svelte component');
 	try{
-	wrapper.svelteProps = { ...(wrapper.svelteProps || {}), ...(JSONparse(propScript.previousElementSibling.innerText)) };
+	wrapper.svelteProps = { ...(wrapper.svelteProps || {}), ...(JSONparse(propScript.previousElementSibling.textContent)) };
 	} catch (e) {
+	const err = 'There was an error';
 	console.error('there was an error parsing props json', e);
 	wrapper.svelteProps = { ...wrapper.svelteProps, error: (wrapper.svelteProps.error || '') + err};
 	}

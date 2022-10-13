@@ -35,7 +35,7 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
 
   liquidContent = liquidContent.replace(/\{%-*\s*(include)\s*['"](.*?)['"]\s*(.*?)\s*-*%\}/gim, (a, keyword, include, rest, offset) =>
   { 
-    const id = rawIncludeRegistry.find(e => e.include == include).id;
+    const id = rawIncludeRegistry.find(e => e.include == include && e.rest == rest).id;
     return `
     {%- capture rawinclude -%}{% include '${include}' ${rest} %}{%- endcapture -%}
   <script liquivelte-keep liquivelte-eval>
