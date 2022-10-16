@@ -524,8 +524,8 @@ function outpusLiquidAndSchemas (module)
 	[...wrapper.querySelectorAll('[liquivelte-value-cache]')].forEach(el => {
 	let [filter, args, value] = el.getAttribute('liquivelte-value-cache').split('§');
 	args = args.split(', ');
-	wrapper.liquid_expression_cache = {};
-	wrapper.liquid_expression_cache[filter] = new Map;
+	wrapper.liquid_expression_cache = wrapper.liquid_expression_cache || {};
+	wrapper.liquid_expression_cache[filter] = wrapper.liquid_expression_cache[filter] || new Map;
 	wrapper.liquid_expression_cache[filter].set(\`\${args.join(',')}\`, value);
 	});
 
