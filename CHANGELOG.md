@@ -34,3 +34,6 @@
 
 # 1.3.2
 - Solved folder section include issue from liquid entry files.
+
+# 1.3.5
+- Fixed liquid expression cache issue.
