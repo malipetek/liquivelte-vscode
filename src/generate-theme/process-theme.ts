@@ -59,7 +59,7 @@ export async function generateAllScripts ()
         }
       });
     } catch (e) {
-      console.error(e);
+      console.warn('could not get folder for deletition ', e);
     }
   }
   async function doBuildAllTemplateOutputs ()

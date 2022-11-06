@@ -84,15 +84,15 @@ export const inputOptions = async () =>
   const srcRoot = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src');
   // see below for details on these options
   const production = !state.watching;
-  const tailwindConfigUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'tailwind.config.js');
-  const tailwindConfigFromWorkspaceFile = (await vscode.workspace.fs.readFile(tailwindConfigUri)).toString();
   let tailwindConfigFromWorkspace = {};
   try {
+    const tailwindConfigUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'tailwind.config.js');
+    const tailwindConfigFromWorkspaceFile = (await vscode.workspace.fs.readFile(tailwindConfigUri)).toString();
     if (tailwindConfigFromWorkspaceFile) {
       tailwindConfigFromWorkspace = (await import(tailwindConfigUri.fsPath)).default;
     }
   } catch (err) {
-    vscode.window.showErrorMessage('Could not import tailwind.config.js' + `
+    vscode.window.showWarningMessage('Could not import tailwind.config.js' + `
     ${err.message}`);
   }
 
