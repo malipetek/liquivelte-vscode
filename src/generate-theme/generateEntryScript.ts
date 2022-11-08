@@ -1,6 +1,71 @@
 import { parsedToken } from './types';
 import toCamelCase from '../utils/to-camel-case';
 
+export async function generateLayoutScript (svelteIncludes: parsedToken[]): Promise<string>
+{
+  try {
+    const includedModules = [];
+    svelteIncludes = svelteIncludes.filter(include =>
+    {
+      if (includedModules.indexOf(include.props.module) === -1) {
+        includedModules.push(include.props.module);
+        return true;
+      }
+      if (include.tagName === 'section' && includedModules.indexOf(include.includeName) === -1) {
+        includedModules.push(include.includeName);
+        return true;
+      }
+      return false;
+    });
+    return `
+  const onIntersect = (el, callback) => {
+    const observer = new IntersectionObserver(callback, {
+      root: null,   // default is the viewport
+      rootMargin: '100px', // default is '0px'
+      threshold: 0 // percentage of taregt's visible area. Triggers "onIntersection"
+    });
+    observer.observe(el);
+  };
+  const template = "{{ template.name }}";
+  const suffix = "{{ template.suffix }}";
+  /* {% assign template_asset_name = template | append: '.liquivelte.js' %} 
+  */
+  const templateScript = "{{ template_asset_name | asset_url }}";
+  import(templateScript);
+  document.addEventListener('DOMContentLoaded', () => {
+    ` +
+      svelteIncludes.reduce((acc, include) => `${acc}
+  Array.from(document.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
+    let svelteProps = wrapper.svelteProps;
+    let rawIncludes = wrapper.rawIncludes;
+    let liquid_expression_cache = wrapper.liquid_expression_cache;
+    wrapper.module_loaded = true;
+    let initialized = false;
+    onIntersect(wrapper, ([entry]) => {
+      (async () => {
+        if(entry.isIntersecting && !initialized) {
+          initialized = true;
+          wrapper.svelteComponent = new (await import("../${include.tagName === 'section' ? 'sections' : 'snippets'}/${include.isFolder ? `${include.props.module || include.includeName}/index` : include.props.module || include.includeName}.liquivelte")).default({
+            target: wrapper,
+            hydrate: true,
+            props: {
+                ...svelteProps,
+                ...rawIncludes,
+                lec: liquid_expression_cache
+            }
+          });
+        }
+      })();
+    });
+  });
+  `, '') + `
+  });`;
+  } catch (err) {
+    throw err;
+  }
+}
+
+
 export async function generateEntryScript (svelteIncludes: parsedToken[]): Promise<string>
 {
   try {

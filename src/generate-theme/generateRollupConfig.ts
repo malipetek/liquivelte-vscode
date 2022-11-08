@@ -25,16 +25,47 @@ const tailwindcssNesting = require('tailwindcss/nesting');
 import state from '../utils/state';
 
 import getThemeDirectory from '../utils/get-theme-directory';
-import { generateEntryScript } from './generateEntryScript';
+import { generateEntryScript, generateLayoutScript } from './generateEntryScript';
 import { getAllIncludes } from './getAllInclues';
 
-export async function generateTemplateEntry (templateName, isLayout)
+export async function generateLayoutEntry(layoutName) {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  const { themeDirectory } = await getThemeDirectory();
+  const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
+  const template = vscode.Uri.joinPath(templatesFolder, layoutName);
+  
+  const templateNameRaw = layoutName;
+  layoutName = layoutName.replace(/\//, '-');
+  const templateNameWithoutExtension = layoutName.replace(/\.(liquid|json)/g, '');
+
+  /*
+  * Generate the script for the template
+  * generate entry script
+  */
+  const allIncludes = await getAllIncludes(layoutName, template, themeDirectory);
+  // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
+  let svelteIncludes = allIncludes.svelteIncludes;
+  try {
+    state.layouts[templateNameRaw].hasIncludes = svelteIncludes.length !== 0;
+  } catch (err) {
+    // whatevier
+  }
+
+
+await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts'));
+const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', templateNameWithoutExtension + '.js');
+const entryContent = await generateLayoutScript(svelteIncludes);
+await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
+
+return {[templateNameWithoutExtension]: entryPath.fsPath};
+}
+
+export async function generateTemplateEntry (templateName)
 {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     const { themeDirectory } = await getThemeDirectory();
     const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
-    const layoutsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout');
-    const template = vscode.Uri.joinPath(isLayout ? layoutsFolder : templatesFolder, templateName);
+    const template = vscode.Uri.joinPath(templatesFolder, templateName);
     
     const templateNameRaw = templateName;
     templateName = templateName.replace(/\//, '-');
@@ -48,31 +79,22 @@ export async function generateTemplateEntry (templateName, isLayout)
     // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
     let svelteIncludes = allIncludes.svelteIncludes;
     try {
-    if (svelteIncludes.length === 0) {
-      if (isLayout) {
-        state.layouts[templateNameRaw].hasIncludes = false;
-      } else {
-        state.templates[templateNameRaw].hasIncludes = false;
+      if (svelteIncludes.length === 0) {
+          state.templates[templateNameRaw].hasIncludes = false;
+          return 0;
       }
-      return 0;
-    }
-    
-    if (isLayout) {
-      state.layouts[templateNameRaw].hasIncludes = true;
-    } else {
       state.templates[templateNameRaw].hasIncludes = true;
+    } catch (err) {
+      // whatevier
     }
-  } catch (err) {
-    // whatevier
-  }
 
+
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
+  const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
+  const entryContent = await generateEntryScript(svelteIncludes);
+  await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
-    const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
-    const entryContent = await generateEntryScript(svelteIncludes);
-    await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
-    
-    return {[templateNameWithoutExtension]: entryPath.fsPath};
+  return {[templateNameWithoutExtension]: entryPath.fsPath};
 }
 
 export const inputOptions = async () =>
@@ -211,7 +233,13 @@ export const outputOptionsList = async () =>
     format: 'es',
     minifyInternalExports: false,
     dir: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets').fsPath,
-    entryFileNames: `[name].liquivelte.js`,
+    entryFileNames (module)
+    {
+      if ((module.facadeModuleId || '').indexOf('.layouts/') !== -1) {
+        return `[name].liquivelte.js.liquid`;
+      }
+      return `[name].liquivelte.js`;
+    },
     assetFileNames: `[name]-hs[hash].liquivelte.js`,
     chunkFileNames (file)
     {
