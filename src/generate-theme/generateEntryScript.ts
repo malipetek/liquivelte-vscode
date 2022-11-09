@@ -1,7 +1,7 @@
 import { parsedToken } from './types';
 import toCamelCase from '../utils/to-camel-case';
 
-export async function generateLayoutScript (svelteIncludes: parsedToken[]): Promise<string>
+export async function generateLayoutScript (svelteIncludes: parsedToken[], template: string): Promise<string>
 {
   try {
     const includedModules = [];
@@ -26,12 +26,9 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[]): Prom
     });
     observer.observe(el);
   };
-  const template = "{{ template.name }}";
-  const suffix = "{{ template.suffix }}";
-  /* {% assign template_asset_name = template | append: '.liquivelte.js' %} 
-  */
-  const templateScript = "{{ template_asset_name | asset_url }}";
-  import(templateScript);
+  
+  import "../.templates/${template}.js";
+
   document.addEventListener('DOMContentLoaded', () => {
     ` +
       svelteIncludes.reduce((acc, include) => `${acc}
@@ -66,7 +63,7 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[]): Prom
 }
 
 
-export async function generateEntryScript (svelteIncludes: parsedToken[]): Promise<string>
+export async function generateTemplateScript (svelteIncludes: parsedToken[]): Promise<string>
 {
   try {
     const includedModules = [];

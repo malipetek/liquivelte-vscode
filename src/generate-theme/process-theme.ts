@@ -66,24 +66,16 @@ export async function generateAllScripts ()
   {
     
     let input = {};
-    let templateInputs = {};
-
-    for (let template of templates.filter(e => e[1] === 1)) {
-      const inputEntry = await generateTemplateEntry(template[0]);
-
-      templateInputs = {
-        ...templateInputs,
-        ...(inputEntry || {})
-      };
-    }
-
+    templates = (await Promise.all(templates.filter(e => e[1] === 1).map(e => e[0]).map(async templ => (await generateTemplateEntry(templ) ? templ : 0)))).filter(e => !!e);
     for (let layout of layouts.filter(e => e[1] === 1)) {
-      const inputEntry = await generateLayoutEntry(layout[0]);
-
-      input = {
-        ...input,
-        ...(inputEntry || {})
-      };
+      for (let template of templates) { 
+        const inputEntry = await generateLayoutEntry(layout[0], template);
+        
+              input = {
+                ...input,
+                ...(inputEntry || {})
+              };
+      }
     }
     
     
