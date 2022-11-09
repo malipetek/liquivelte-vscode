@@ -12,7 +12,7 @@ import state from '../utils/state';
 import debounce from 'debounce-async';
 
 import { generateSectionScript, generateAllSectionsScript } from './generateEntryScript';
-import { generateTemplateEntry, outputOptionsList, inputOptions } from './generateRollupConfig';
+import { generateTemplateEntry, generateLayoutEntry, outputOptionsList, inputOptions } from './generateRollupConfig';
 import { generateIncludeScripts } from './generateIncludes';
 import { sendStats } from '../sidebar/sidebar-provider';
 const { workspaceFolders } = vscode.workspace;
@@ -66,22 +66,17 @@ export async function generateAllScripts ()
   {
     
     let input = {};
-    for (let template of templates.filter(e => e[1] === 1)) {
-      const inputEntry = await generateTemplateEntry(template[0], false);
+    for (let layout of layouts.filter(e => e[1] === 1)) {
+      for (let template of templates.filter(e => e[1] === 1)) {
+        const inputEntry = await generateTemplateEntry(layout[0], template[0]);
   
-      input = {
-        ...input,
-        ...(inputEntry || {})
-      };
+        input = {
+          ...input,
+          ...(inputEntry || {})
+        };
+      }
     }
-    for (let template of layouts.filter(e => e[1] === 1)) {
-      const inputEntry = await generateTemplateEntry(template[0], true);
-  
-      input = {
-        ...input,
-        ...(inputEntry || {})
-      };
-    }
+    
     const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
     for (let section of liquivelteSections) {
       let isFolder = section.indexOf('.liquivelte') === -1;
@@ -95,7 +90,7 @@ export async function generateAllScripts ()
       };
     }
 
-    deleteUnusedTemplateEntries(input);
+    // deleteUnusedTemplateEntries(input);
 
     const allSectionsLoaderContent = await generateAllSectionsScript(liquivelteSections);
     const allSectionsLoaderPath = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets',  'liquivelte-sections-loader.js.liquid');

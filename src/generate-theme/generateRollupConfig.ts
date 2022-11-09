@@ -28,48 +28,52 @@ import getThemeDirectory from '../utils/get-theme-directory';
 import { generateEntryScript } from './generateEntryScript';
 import { getAllIncludes } from './getAllInclues';
 
-export async function generateTemplateEntry (templateName, isLayout)
+export async function generateTemplateEntry (layoutName, templateName)
 {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     const { themeDirectory } = await getThemeDirectory();
     const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
     const layoutsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout');
-    const template = vscode.Uri.joinPath(isLayout ? layoutsFolder : templatesFolder, templateName);
+    const template = vscode.Uri.joinPath(templatesFolder, templateName);
+    const layout = vscode.Uri.joinPath(layoutsFolder, layoutName);
     
     const templateNameRaw = templateName;
+    const layoutNameRaw = layoutName;
     templateName = templateName.replace(/\//, '-');
+    layoutName = layoutName.replace(/\//, '-');
     const templateNameWithoutExtension = templateName.replace(/\.(liquid|json)/g, '');
+    const layoutNameWithoutExtension = layoutName.replace(/\.(liquid|json)/g, '');
 
     /*
     * Generate the script for the template
     * generate entry script
     */
-    const allIncludes = await getAllIncludes(templateName, template, themeDirectory);
+    const allTemplateIncludes = await getAllIncludes(templateName, template, themeDirectory);
+    const allLayoutIncludes = await getAllIncludes(layoutName, layout, themeDirectory);
     // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
-    let svelteIncludes = allIncludes.svelteIncludes;
+    let templateSvelteIncludes = allTemplateIncludes.svelteIncludes;
+    let layoutSvelteIncludes = allLayoutIncludes.svelteIncludes;
     try {
-    if (svelteIncludes.length === 0) {
-      if (isLayout) {
-        state.layouts[templateNameRaw].hasIncludes = false;
-      } else {
+      if (templateSvelteIncludes.length === 0) {
         state.templates[templateNameRaw].hasIncludes = false;
+      } else {
+        state.templates[templateNameRaw].hasIncludes = true;
       }
-      return 0;
+      if (layoutSvelteIncludes.length === 0) {
+        state.layouts[layoutNameRaw].hasIncludes = false;
+      } else {
+        state.layouts[layoutNameRaw].hasIncludes = true;
+      }
+    } catch (err) {
+      // whatevier
     }
-    
-    if (isLayout) {
-      state.layouts[templateNameRaw].hasIncludes = true;
-    } else {
-      state.templates[templateNameRaw].hasIncludes = true;
-    }
-  } catch (err) {
-    // whatevier
-  }
 
   
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
-    const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
-    const entryContent = await generateEntryScript(svelteIncludes);
+    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts'));
+        
+    const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.${templateNameWithoutExtension}.js`);
+  if (templateSvelteIncludes.concat(layoutSvelteIncludes).length === 0) return 0;
+    const entryContent = await generateEntryScript(templateSvelteIncludes.concat(layoutSvelteIncludes));
     await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
     
     return {[templateNameWithoutExtension]: entryPath.fsPath};
