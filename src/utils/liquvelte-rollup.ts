@@ -707,16 +707,31 @@ export function css(options) {
 			// 	getModules(firstModule);
 			// 	return allModules;
 			// }
-
+			// TODO: Layout bundle include somehow section css or make it dynamically load somewhere else
 			[...Object.keys(bundle).map(k => bundle[k])].filter(m => m.isEntry).map(m =>
 			{
-				const css = [...m.imports, ...m.dynamicImports].reduce((c, imp) =>
+				const processedModules = new Set([m.fileName]);
+				function getStyles (imp)
 				{
+					console.log('getting styles of ', imp);
 					const styleModules = !bundle[imp] || !bundle[imp].modules ? [] : Object.keys(bundle[imp].modules).filter(m => m.slice(-4) === '.css');
 					// const styleModules = Object.keys(styles).filter(s => s.indexOf(imp.replace(/-hs.+\.js/, '')) > -1);
-					const style = styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
-					return `${c} ${style || ''}`;
-				}, '');
+					return styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
+				}
+
+				function getImportedStyles (m)
+				{
+					const nonCircularImports = [...m.imports, ...m.dynamicImports].filter(_m => !processedModules.has(_m))
+					return nonCircularImports.reduce((c, imp) =>
+					{
+						processedModules.add(imp);
+						let style = getStyles(imp);
+						style += getImportedStyles(bundle[imp]);
+						return `${c} ${style || ''}`;
+						}, '');
+				}
+
+				const css = getImportedStyles(m);
 
 				this.emitFile({ type: 'asset', fileName: `${m.fileName.slice(0, -3)}.css`, source: css });
 			});
