@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import path from 'path';
+import fs from 'fs';
 
 import svelte from 'rollup-plugin-svelte';
 import commonjs from '@rollup/plugin-commonjs';
@@ -95,10 +96,12 @@ export async function generateTemplateEntry (templateName)
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
   const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
+  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
+  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
   const entryContent = await generateTemplateScript(svelteIncludes);
   await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
-  return {[templateNameWithoutExtension]: entryPath.fsPath};
+  return {[templateNameWithoutExtension]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
 }
 
 export const inputOptions = async () =>

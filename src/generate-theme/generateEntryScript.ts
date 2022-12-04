@@ -7,8 +7,8 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[], templ
     const includedModules = [];
     svelteIncludes = svelteIncludes.filter(include =>
     {
-      if (includedModules.indexOf(include.props.module) === -1) {
-        includedModules.push(include.props.module);
+      if (includedModules.indexOf(include.includeName) === -1) {
+        includedModules.push(include.includeName);
         return true;
       }
       if (include.tagName === 'section' && includedModules.indexOf(include.includeName) === -1) {

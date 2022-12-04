@@ -287,7 +287,7 @@ export function liquivelteSveltePlugin (options = {})
 		generateBundle: function generateBundle (opts, bundle)
 		{
 
-function outpusLiquidAndSchemas (module)
+function outputLiquidAndSchemas (module)
 {
 		if (module.meta.isSection) {
 			const that = this;
@@ -329,9 +329,13 @@ function outpusLiquidAndSchemas (module)
 		let id = module.id;
 		let themePath = themeDirectory;
 		let filePath = path.parse(id);
+		let parentFolderisSectionsOrSnippets = filePath.dir.split('/').includes('snippets') || filePath.dir.split('/').includes('sections');
 		let parentFolderSectionsOrSnippets = filePath.dir.split('/').reduce((c, piece) => c.includes('snippets') || c.includes('sections') ? [...c] : [...c, piece], []).join('/');
-		if (!parentFolderSectionsOrSnippets) {
-			throw new Error(`Could not determine parent folder for ${id}`);
+		let isNodeModule = filePath.dir.split('/').includes('node_modules');
+		let [pkgName] = filePath.dir.split('/').reduce((c, piece) => c.includes('node_modules') ? [piece] : [...c, piece], []);
+
+		if (!parentFolderisSectionsOrSnippets && !isNodeModule) {
+			throw new Error(`Could not determine parent folder for ${id}, liquivelte component should be in `);
 		}
 		const parentFolder = path.parse(parentFolderSectionsOrSnippets);
 		let fileName = filePath.base;
@@ -346,7 +350,10 @@ function outpusLiquidAndSchemas (module)
 		if (parentFolderName == 'sections' && path.parse(filePath.dir).base !== 'sections') {
 			parentFolderName = 'snippets';
 		}
-		const dest = path.resolve(themePath, parentFolderName, fileName.replace('.liquivelte', '.liquid'));
+		if (isNodeModule) {
+			parentFolderName = 'snippets';
+		}
+		const dest = path.resolve(themePath, parentFolderName, `${isNodeModule ? pkgName + '-' : ''}${fileName.replace('.liquivelte', '.liquid')}`);
 
 		let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
 		{
@@ -592,7 +599,7 @@ function outpusLiquidAndSchemas (module)
 			[...this.moduleIds].filter(id => /\.liquivelte$/.test(id)).forEach(m =>
 			{
 				const module = this.getModuleInfo(m);
-				outpusLiquidAndSchemas.call(this, module);
+				outputLiquidAndSchemas.call(this, module);
 			});
 		
 		const entryPoints = Object.keys(bundle).map(key => bundle[key]).filter(b => b.isEntry);
