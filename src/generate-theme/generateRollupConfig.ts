@@ -59,10 +59,13 @@ export async function generateLayoutEntry(layoutName, templateName) {
 
 await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts'));
 const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.${templateNameWithoutExtension}.js`);
+const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.${templateNameWithoutExtension}.custom.js`);
+const customEntryExists = fs.existsSync(customEntryPath.fsPath);
 const entryContent = await generateLayoutScript(svelteIncludes, templateNameWithoutExtension);
+
 await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
 
-return {[`${layoutNameWithoutExtension}.${templateNameWithoutExtension}`]: entryPath.fsPath};
+return {[`${layoutNameWithoutExtension}.${templateNameWithoutExtension}`]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
 }
 
 export async function generateTemplateEntry (templateName)
@@ -96,12 +99,10 @@ export async function generateTemplateEntry (templateName)
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
   const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
-  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
-  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
   const entryContent = await generateTemplateScript(svelteIncludes);
   await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
-  return {[templateNameWithoutExtension]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
+  return {[templateNameWithoutExtension]: entryPath.fsPath};
 }
 
 export const inputOptions = async () =>

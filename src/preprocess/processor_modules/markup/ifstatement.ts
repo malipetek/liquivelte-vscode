@@ -14,6 +14,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     ms.overwrite(offset, offset + a.length, `{#if ${exp.replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')} }`);
     replaceOperations.push({
       was: {
@@ -36,6 +37,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
       .replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')} )}`);
     
     replaceOperations.push({
@@ -59,6 +61,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
       .replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')}}`);
   
     replaceOperations.push({
