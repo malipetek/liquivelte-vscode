@@ -113,8 +113,13 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
     return '';
   });
 
-  (componentExpressions || []).map(exp => ({ module: exp.module, filename: exp.tagName, isNpmImport: true }))
-  .concat(modules).forEach(({ module, filename, isNpmImport }) =>
+  (componentExpressions || []).filter(exp => !modules.some(m => m.module == exp.tagName))
+    .map(exp => ({
+      base: exp.module,
+      module: exp.tagName, filename: `${exp.module}-${toKebabCase(exp.tagName).toLowerCase()}`,
+      isNpmImport: true
+    }))
+  .concat(modules).forEach(({ module, filename, base, isNpmImport }) =>
   {
     {
       module = module.replace(/\{|\}/g, '');
@@ -133,9 +138,9 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
         const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
         const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
         if (!children) {
-          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length, `<${module} ${putBackArrowFunctions(props || '')} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
         } else {
-          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length - children.length - `</${module}>`.length, `<${module} ${props || ''} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length - children.length - `</${module}>`.length, `<${module} ${ putBackArrowFunctions(props || '')} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
         }
 
         return '';
@@ -174,8 +179,12 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
   kvsp stands for "key value separator"
   prsp stands for "props separator"
 {% endcomment %}
-{% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
-{% include '${isNpmImport ? `${module}-` : ''}${filename}', liquivelte: true, props: props, sub_include: true %}
+{% capture props_${module} %}${Object.keys(propsParsed).map(key => `${key.replace(/\w+:/, '')}-kvsp-${/(\![^\s]*)/gi.test(propsParsed[key]) ?
+`{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
+propsParsed[key]
+}`).reduce((c, a) => `${c}${c ? '-prsp-' : ''}${a}`, '')}{% endcapture %}
+{% assign modulename = basename | append: '${filename}' %}
+{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, basename: '${isNpmImport ? `${base}-` : ''}' %}
 {% assign props = '' %}`;
       }
 
@@ -190,15 +199,18 @@ scs stands for "slot component separator"
 scvs stands for "slot component value separator"
 smns stands for "slot module name separator"
 {% endcomment %}
-{% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
+{% capture props_${module} %}${Object.keys(propsParsed).map(key => `${key.replace(/\w+:/, '')}-kvsp-${/(\![^\s]*)/gi.test(propsParsed[key]) ?
+`{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
+propsParsed[key]
+}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
 ${slotContents.reduce((c, slotEntry) => `${c}
-{% capture slot_content_${module}_${slotEntry.name} %}${slotEntry.content}{% endcapture %}
-{% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
+{%- capture slot_content_${module}_${slotEntry.name} -%}${slotEntry.content}{%- endcapture -%}
+{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
 `, '')}
-{% capture slot_content_${module} %}${remainingContent}{% endcapture %}
-{% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_${module} %}
-
-{% include '${isNpmImport ? `${module}-` : ''}${filename}', liquivelte: true, props: props, sub_include: true %}
+{%- capture slot_content_def_${module} -%}${remainingContent}{%- endcapture -%}
+{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_def_${module} %}
+{% assign modulename = basename | append: '${filename}' %}
+{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, slot_contents: slot_content_${module}, basename: '${isNpmImport ? `${base}-` : ''}' %}
 {% assign props = '' %}`;
     });
   });

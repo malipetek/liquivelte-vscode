@@ -37,6 +37,7 @@ export default function rawIncludeProcessor (markup: string, ms: MagicString, { 
   { 
     const id = rawIncludeRegistry.find(e => e.include == include && e.rest == rest).id;
     return `
+    {% include '${include}' ${rest} %}
     {%- capture rawinclude -%}{% include '${include}' ${rest} %}{%- endcapture -%}
   <script liquivelte-keep liquivelte-eval>
   window.liquivelte_rawincludes = window.liquivelte_rawincludes || {};

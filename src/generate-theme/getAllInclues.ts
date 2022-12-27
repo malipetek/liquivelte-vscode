@@ -29,7 +29,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
       try {
         templateFile = (await vscode.workspace.fs.readFile(file)).toString();
       } catch (err) {
-        console.log('include file is not found', file);
+        // console.log('include file is not found', file);
       }
       parsedFiles.set(file.fsPath, templateFile);
       if (path.parse(file.path).ext === '.json') {
@@ -61,7 +61,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
               _file = (await vscode.workspace.fs.readFile(vscode.Uri.joinPath(sectionsFolder, `${section}.liquid`))).toString();
             }
           } catch (err) {
-            console.log('include file is not found', section);
+            // console.log('include file is not found', section);
           }
           return _file;
         }))).reduce((acc, curr) => acc + curr, '');

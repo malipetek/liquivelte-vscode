@@ -23,13 +23,18 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
   let propStarted = false;
   let valueStarted = false;
   let quoteStarted = false;
+  let valueOmitted = false;
   let currentProp = '';
   let currentValue = '';
 
   for (let i = 0; i < strArr.length; i++) {
     const char = strArr[i];
     switch (true) {
-      case char === ' ':
+      case /\s|\n/.test(char):
+        if (propStarted) {
+          propStarted = false;
+          valueOmitted = true;
+        }
         if (!quoteStarted && !bracket.open) {
             propStarted = false;
             // console.log(char, 'propEnded', currentProp);
@@ -72,17 +77,20 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
     //   valueStarted ? 'valueStarted' : '',
     //   quoteStarted ? 'quoteStarted' : '',
     //   bracket.open ? 'bracket.open' : '');
+
     if (propStarted && !valueStarted && !preventAdd) {
       currentProp += char;
-    } else if (!propStarted && valueStarted && !preventAdd) { 
+    } else if (!propStarted && valueStarted && !preventAdd) {
       currentValue += char;
     } else if (!propStarted && !valueStarted) {
       if (currentProp) {
-        props[currentProp] = currentValue.replace(/^"/, '').replace(/"$/, '');
+        props[currentProp] = valueOmitted ? '1' : currentValue.replace(/^"/, '').replace(/"$/, '');
       }
+      valueOmitted = false;
       currentValue = '';
       currentProp = '';
     }
+   
     preventAdd = false;
   }
 

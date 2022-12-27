@@ -135,9 +135,12 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
   kvsp stands for "key value separator"
   prsp stands for "props separator"
 {% endcomment %}
-{% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
-{% include '${filename}', liquivelte: true, props: props, sub_include: true %}
-{% assign props = '' %}`;
+{% capture props_${module} %}${Object.keys(propsParsed).map(key => `${key.replace(/\w+:/, '')}-kvsp-${/(\![^\s]*)/gi.test(propsParsed[key]) ?
+  `{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
+  propsParsed[key] 
+  }`).reduce((c, a) => `${c}${c ? '-prsp-' : ''}${a}`, '')}{% endcapture %}
+{% include '${filename}', liquivelte: true, props: props_${module}, sub_include: true %}
+{% assign props_${module} = '' %}`;
       }
 
       const { remainingContent, slotContents } = getNamedSlots(children);
@@ -151,15 +154,18 @@ scs stands for "slot component separator"
 scvs stands for "slot component value separator"
 smns stands for "slot module name separator"
 {% endcomment %}
-{% capture props %}${Object.keys(propsParsed).map(key => `${key}-kvsp-${propsParsed[key]}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
+{% capture props_${module} %}${Object.keys(propsParsed).map(key => `${key.replace(/\w+:/, '')}-kvsp-${/(\![^\s]*)/gi.test(propsParsed[key]) ?
+`{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
+propsParsed[key]
+}`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
 ${slotContents.reduce((c, slotEntry) => `${c}
-{% capture slot_content_${module}_${slotEntry.name} %}${slotEntry.content}{% endcapture %}
-{% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
+{% capture slot_content_${module}_${slotEntry.name} -%}${slotEntry.content}{%- endcapture %}
+{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
 `, '')}
-{% capture slot_content_${module} %}${remainingContent}{% endcapture %}
-{% assign slot_contents = slot_contents | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_${module} %}
+{% capture slot_content_def_${module} -%}${remainingContent}{%- endcapture %}
+{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_def_${module} %}
 
-{% include '${filename}', liquivelte: true, props: props, sub_include: true %}
+{% include '${filename}', liquivelte: true, props: props_${module}, slot_contents: slot_content_${module}, sub_include: true %}
 {% assign props = '' %}`;
     });
   });

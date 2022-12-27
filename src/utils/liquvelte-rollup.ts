@@ -354,43 +354,36 @@ function outputLiquidAndSchemas (module)
 			parentFolderName = 'snippets';
 		}
 		const dest = path.resolve(themePath, parentFolderName, `${isNodeModule ? pkgName + '-' : ''}${fileName.replace('.liquivelte', '.liquid')}`);
+		let slots = [];
 
+		const slugify = (str = "") =>
+			str.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
+
+		const handle = slugify(`${isNodeModule ? pkgName + '_' : ''}${path.parse(id).name}`);
+		
 		let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
 		{
+			if (named) {
+				slots.push(name);
+			}
 			if (!named) {
-				return `{%- liquid 
-	assign slot_contents_and_values = slot_contents | split: '-scs-'
-	for content_and_value in slot_contents_and_values
-	assign module = content_and_value | split: '-scvs-' | first
-	assign value = content_and_value | split: '-scvs-' | last
-	if module == '${path.parse(id).name}'
-	assign children = value | strip
-	endif
-	endfor
-	-%}
-	{%- if children != blank -%}
-	{{- children -}}
+				return `
+	{%- if sub_include -%}
+		{%- if slot_default_${handle} != blank -%}
+			{{- slot_default_${handle} -}}
+		{%- endif -%}
+	{%- else -%}
+		{%- if main_content != blank -%}
+			{{- main_content -}}
+		{%- endif -%}
 	{%- endif -%}
-	{%- assign children = '' -%}
 	`;
 			}
-			return `{%- liquid
-	assign slot_contents_and_values = slot_contents | split: '-scs-'
-	for content_and_value in slot_contents_and_values
-	assign module_and_slotname = content_and_value | split: '-scvs-' | first
-	assign module = module_and_slotname | split: '-smns-' | first
-	assign name = module_and_slotname | split: '-smns-' | last
-	assign value = content_and_value | split: '-scvs-' | last
-	if module == '${path.parse(id).name}' and name == '${name}'
-	assign children_${name} = value | strip
-	endif
-	endfor
-	-%}
-	{%- if children_${name} != blank -%}
-	{{- children_${name} -}}
+			return `
+	{%- if slot_${name}_${handle} != blank -%}
+		{{- slot_${name}_${handle} -}}
 	{%- endif -%}
-	{%- assign children_${name} = '' -%}
-	`;
+`;
 
 		});
 
@@ -423,7 +416,7 @@ function outputLiquidAndSchemas (module)
 			return `
 	{%- liquid 
 	assign dynamic_classes = ''
-	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')}
+	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')} ${/[!\=]\=/.test(exp) ? '' : '!= blank'}
 	assign dynamic_classes = dynamic_classes${dynamicClasses[exp].reduce((c, cls) => `${c} | append: ' ${cls}'`, '')}
 	endif`).join(`
 	`)}
@@ -450,31 +443,73 @@ function outputLiquidAndSchemas (module)
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const JSONParseFn = `function JSONparse(n){try{return JSON.parse(n)}catch(t){try{const e=parseInt(t.message.match(/position\\s+(\\d+)/)[1],10),s=n.slice(0,e+1).split("\\n"),i=s.length,l=n.split("\\n"),r=s[s.length-1].length-1,c=l.slice(0,i).join("\\n")+"\\n"+new Array(r).fill(" ").join("")+"👆\\n"+l.slice(i).join("\\n");return console.log(c),{}}catch(n){throw t}}}`;
 		const liquidPropsParser = `{%- liquid
-	assign props_arr = props | split: '-prsp-'
-	for prop in props_arr
-	assign propName = prop | split: '-kvsp-' | first
-	assign propValue = prop | split: '-kvsp-' | last | remove: '"'
-	if propValue contains '{' and propValue contains '}'
-	assign propValue = propValue | remove: '{' | remove: '}'
-	assign propValueArr = propValue | split: ','
-	for entry in propValueArr
-	assign key = entry | split: ':' | first | strip | remove: '"'
-	assign value = entry | split: ':' | last | strip | remove: '"'
-	assign composite_key = propName | append: '_' | append: key
+	assign lv_props_arr = props | split: '-prsp-'
+	for lv_prop in lv_props_arr
+	assign lv_prop_and_value = lv_prop | split: '-kvsp-'
+	assign lv_propName = lv_prop_and_value | first
+	if lv_prop_and_value.size > 1
+		assign lv_propValue = lv_prop_and_value | last | remove: '"'
+	else
+		assign lv_propValue = ''	
+	endif
+	if lv_propValue == '0'
+		assign lv_propValue = lv_propValue | times: 1
+	endif
+	if lv_propValue contains '{' and lv_propValue contains '}'
+	assign lv_propValue = lv_propValue | remove: '{' | remove: '}'
+	assign lv_propValueArr = lv_propValue | split: ','
+	for lv_entry in lv_propValueArr
+	assign lv_key = lv_entry | split: ':' | first | strip | remove: '"'
+	assign lv_value = lv_entry | split: ':' | last | strip | remove: '"'
+	assign composite_key = lv_propName | append: '_' | append: lv_key
 	${exportedObjectVariables.reduce((c, v) => `${c}
 	${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
 	if composite_key == '${Object.keys(v)[0]}_${k}'
-		assign ${Object.keys(v)[0]}_${k} = value
+		assign ${Object.keys(v)[0]}_${k} = lv_value
 	endif  
 	`, '')}
 	`, '')}
 	endfor
 	endif${exportedVariables.reduce((c, v) => `${c}
-	if propName == '${v}'
-	assign ${v} = propValue
+	if lv_propName == '${v}'
+		assign ${v} = lv_propValue
 	endif`, '')}
 	endfor
 	-%}`;
+		const liquidPropsResetter = `{%- liquid
+			${exportedObjectVariables.reduce((c, v) => `${c}
+			${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
+			assign ${Object.keys(v)[0]}_${k} = null
+			`, '')}
+			`, '')}
+			${exportedVariables.reduce((c, v) => `${c}
+			assign ${v} = null`, '')}
+			-%}`;
+		
+		const slotsParser = `
+			{%- liquid
+				assign slot_contents_and_values = slot_contents | split: '-scs-'
+				for content_and_value in slot_contents_and_values
+					assign module_and_slotname = content_and_value | split: '-scvs-' | first
+					assign lv_module = module_and_slotname | split: '-smns-' | first
+					assign lv_name = module_and_slotname | split: '-smns-' | last
+					assign lv_value = content_and_value | split: '-scvs-' | last
+					${slots.map(name =>
+					`if lv_module == '${isNodeModule ? pkgName + '-' : ''}${path.parse(id).name}' and lv_name == '${name}'
+						assign slot_${name}_${handle} = lv_value | strip
+					endif
+					`).join('')}
+					if lv_module == '${isNodeModule ? pkgName + '-' : ''}${path.parse(id).name}'
+						assign slot_default_${handle} = lv_value | strip
+					endif
+				endfor
+				-%}`;
+		const slotsResetter = `{%- liquid 
+			assign slot_default_${handle} = null
+			${slots.map(name => `assign slot_${name}_${handle} = null
+			`).join('')}
+			-%}`;
+		
 		const propsParserScript = `<script class="liquivelte-prop-script">(() => {
 	var propScript = Shopify.designMode && window.propScriptForDesignMode ? window.propScriptForDesignMode : document.currentScript;
 	${parsePropsFn}
@@ -546,34 +581,37 @@ function outputLiquidAndSchemas (module)
 
 		const propsContent = `
 	${liquidImportsModule.some(v => v == 'cart') ? CART_JSON_LIQUID  : ''}					
-	${subImportsRegistryModule.some(v => v.id == 'section$blocks') ? SECTION_BLOCKS_LIQUID  : ''}					
+	${subImportsRegistryModule.some(v => v.id == 'sectionƒƒblocks') ? SECTION_BLOCKS_LIQUID  : ''}					
 	<script type="text/noscript" class="instance-data">{
 	${liquidImportsModule
 				.map(v => 	v == 'cart' ?
 					`"${v}": {{ cart_json }}`
 					: `"${v}" : {{ ${v} | json }} `)
-				.join(', ')
+				.join(', ').trim()
 			}
 	${liquidImportsModule.length && subImportsRegistryModule.length ? ',' : ''}
 	${subImportsRegistryModule
 			.map(v =>
-				v.id == 'section$blocks' ?
+				v.id == 'sectionƒƒblocks' ?
 					`"${v.id}": {{ section_blocks_json }}`
 				: `"${v.id}": {{ ${v.importStatement} | json }} `)
-				.join(', ')
+				.join(', ').trim()
 			}
-
 	}</script>
 	`;
 
 		finalLiquidContent = `
+	${liquidPropsResetter}
 	${liquidPropsParser}
+	${slotsParser}
 	{%- unless sub_include -%} 
 	<div class="liquivelte-component ${fileName.replace('.liquivelte', '').replace('.liquid', '')}" data-liquivelte-component-name="${fileName.replace('.liquid', '')}">
 	{%- endunless -%}
 	${finalLiquidContent}
 	${propsContent}
 	${propsParserScript}
+	${liquidPropsResetter}
+	${slotsResetter}
 	{%- unless sub_include -%} 
 	</div>
 	{%- endunless -%}
@@ -586,7 +624,7 @@ function outputLiquidAndSchemas (module)
 		/* -------------------------------------------------------------------------- */
 		/*                            OUTPUT LIQUID CONTENT                           */
 		/* -------------------------------------------------------------------------- */
-		fs.outputFileSync(dest, finalLiquidContent);
+		fs.outputFileSync(dest, finalLiquidContent.replace(/^\s*[$\n]/g, ''));
 	} catch (err) {
 		console.log('error in liquid generation ', err);
 	}
@@ -642,7 +680,7 @@ export function css(options) {
           map: { mappings: '' }
         }
       }
-
+			// console.log('style ', id);
       // Track the order that each stylesheet is imported.
       if (!order.includes(id)) {
         order.push(id);
@@ -714,28 +752,28 @@ export function css(options) {
 			// 	getModules(firstModule);
 			// 	return allModules;
 			// }
-			// TODO: Layout bundle include somehow section css or make it dynamically load somewhere else
 			[...Object.keys(bundle).map(k => bundle[k])].filter(m => m.isEntry).map(m =>
 			{
 				const processedModules = new Set([m.fileName]);
 				function getStyles (imp)
 				{
-					console.log('getting styles of ', imp);
 					const styleModules = !bundle[imp] || !bundle[imp].modules ? [] : Object.keys(bundle[imp].modules).filter(m => m.slice(-4) === '.css');
-					// const styleModules = Object.keys(styles).filter(s => s.indexOf(imp.replace(/-hs.+\.js/, '')) > -1);
 					return styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
 				}
 
 				function getImportedStyles (m)
 				{
-					const nonCircularImports = [...m.imports, ...m.dynamicImports].filter(_m => !processedModules.has(_m))
-					return nonCircularImports.reduce((c, imp) =>
+					const moduleStyles = styles[`${(m.facadeModuleId || '').replace(/\.[^\.]+$/, '.css')}`]
+					return [...m.imports, ...m.dynamicImports].reduce((c, imp) =>
 					{
+						const circular = processedModules.has(imp);
 						processedModules.add(imp);
 						let style = getStyles(imp);
-						style += getImportedStyles(bundle[imp]);
+						if (!circular && bundle[imp]) {
+							style += getImportedStyles(bundle[imp]);
+						}
 						return `${c} ${style || ''}`;
-						}, '');
+						}, moduleStyles || '');
 				}
 
 				const css = getImportedStyles(m);

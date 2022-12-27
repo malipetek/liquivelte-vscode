@@ -1,7 +1,14 @@
 import { parsedToken } from './types';
 import toCamelCase from '../utils/to-camel-case';
 
-export async function generateLayoutScript (svelteIncludes: parsedToken[], template: string): Promise<string>
+export async function generateCombinedEntryScript (layoutScript, template)
+{
+  return layoutScript
+    .replace('// include template module',
+      `import "../.templates/${template}.js";
+  `);
+}
+export async function generateLayoutScript (svelteIncludes: parsedToken[]): Promise<string>
 {
   try {
     const includedModules = [];
@@ -27,7 +34,8 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[], templ
     observer.observe(el);
   };
   
-  import "../.templates/${template}.js";
+  /* {% comment %} DO NOT REMOVE THIS LINE {% endcomment %} */
+  // include template module
 
   document.addEventListener('DOMContentLoaded', () => {
     ` +
