@@ -16,7 +16,7 @@ export default async function generateCritical ()
       headless: true,
       executablePath
     });
-
+                                              
     let connectToBrowser = () => puppeteer.connect({
       browserWSEndpoint: browser.wsEndpoint()
     });
@@ -53,82 +53,88 @@ export default async function generateCritical ()
     };
 
     let criticalSnippet = `
-<style>
-{% case template %}
-`;
-    for (let template in state.templates) {
-      const [templateName, alternameName] = [...(template.match(/([^\.]+)(?=\.)/g) || [])];
-      let cssContent = '';
-      try {
-        // @ts-ignore
-        const cssFileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, state.themeDirectory, 'assets', `${templateName}${alternameName ? `.${alternameName}` : ''}.liquivelte.css`)
-        const cssFile = await vscode.workspace.fs.readFile(cssFileUri);
-        cssContent += cssFile.toString();
-      } catch (e) {
-        console.log('could not get template css ', template, e.message)
-      }
-      try {
-        const layoutName = state.templates[template].layout;
-        if (layoutName) { 
+    {%- liquid
+  assign pageurl = content_for_header| split:'"pageurl":"' | last | split:'"' | first 
+  assign urlparams = pageurl | split: '?' | last | replace:'\/','/' | replace:'%20',' ' | replace:'\u0026','&' | split: '&' 
+
+  for param in urlparams    
+    assign key = param | split: '=' | first 
+    assign value = param | split: '=' | last 
+    if key == 'nocrit' 
+      assign nocritical = true 
+    endif 
+  endfor 
+-%}
+{% unless nocritical %}
+  <style critical-css>
+  {% case template %}
+  `;
+      for (let template in state.templates) {
+        const [templateName, alternameName] = [...(template.match(/([^\.]+)(?=\.)/g) || [])];
+        let cssContent = '';
+        try {
           // @ts-ignore
-          const cssFileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, state.themeDirectory, 'assets', `${layoutName}.liquivelte.css`)
+          const cssFileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, state.themeDirectory, 'assets', `${template.layout || 'theme' }.${templateName}${alternameName ? `.${alternameName}` : ''}.liquivelte.css`)
           const cssFile = await vscode.workspace.fs.readFile(cssFileUri);
           cssContent += cssFile.toString();
+        } catch (e) {
+          console.log('could not get template css ', template, e.message)
         }
-      } catch (e) {
-        console.log('could not get layout css ', state.templates[template].layout, e.message)
-      }
 
-      let pathFromConfig = state.criticalConfig[`path-for-${template}`];
-      try {
-        const u = new URL(pathFromConfig);
-        pathFromConfig = u.pathname
-      } catch (err) {
+        let pathFromConfig = state.criticalConfig[`path-for-${template}`];
+        try {
+          const u = new URL(pathFromConfig);
+          pathFromConfig = u.pathname
+        } catch (err) {
 
-      } 
-      const url = new URL(baseUrl.href);
-      let path = defaultPaths[templateName] || pathFromConfig;
-      let enabled = state.criticalConfig[`${template}-enabled`];
-        url.pathname = path;
-        url.searchParams.append('nocrit', '');
-      
-      if (enabled && path && cssContent) {
-        const { critical, rest } = await crittr({
-          urls: [url.href],
-          css: cssContent,
-          renderWaitTime: 5000,
-          timeout: 10e3,
-          blockJSRequests: true,
-          puppeteer: {
-              browser,
-          }
-        });
-        // const criticalMobile = await penthouse({
-        //   url: url.href,
-        //   cssString: cssContent,
-        //   renderWaitTime: 5000,
-        //   width: 380,
-        //   height: 730,
-        //   timeout: 3e3,
-        //   blockJSRequests: true,
-        //   puppeteer: {
-        //       getBrowser: connectToBrowser,
-        //       pageGotoOptions: { waitUntil: 'networkidle0', }
-        //   }
-        // });
+        } 
+        const url = new URL(baseUrl.href);
+        let path = defaultPaths[templateName] || pathFromConfig;
+        let enabled = state.criticalConfig[`${template}-enabled`];
+          url.pathname = path;
+          url.searchParams.append('nocrit', '');
         
-      criticalSnippet += `
-  {% when '${templateName}${alternameName ? `.${alternameName}` : ''}' %}
-    ${critical}
-`;
-        result += `
-Critical css generated for ${templateName}${alternameName ? `.${alternameName}` : ''}`;
-      }
+        if (enabled && path && cssContent) {
+          const { critical, rest } = await crittr({
+            urls: [url.href],
+            css: cssContent,
+            renderWaitTime: 5000,
+            timeout: 10e3,
+            keepSelectors: [':root'],
+            blockJSRequests: true,
+            puppeteer: {
+                browser,
+            }
+          });
+          // const criticalMobile = await penthouse({
+          //   url: url.href,
+          //   cssString: cssContent,
+          //   renderWaitTime: 5000,
+          //   width: 380,
+          //   height: 730,
+          //   timeout: 3e3,
+          //   blockJSRequests: true,
+          //   puppeteer: {
+          //       getBrowser: connectToBrowser,
+          //       pageGotoOptions: { waitUntil: 'networkidle0', }
+          //   }
+          // });
 
-    }
-    criticalSnippet += `      
-{% endcase %}
-</style>
+          criticalSnippet += `
+  `;
+  // @ts-ignore
+  criticalSnippet += `  {% when '${template.layout || 'theme'}${templateName}${alternameName ? `.${alternameName}` : ''}' %}
+      ${critical}
+  `;
+          result += `
+  Critical css generated for ${templateName}${alternameName ? `.${alternameName}` : ''}`;
+        }
+
+      }
+      criticalSnippet += `      
+  {% endcase %}
+  </style>
+{% endunless %}
 `;
     const criticalFileUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, state.themeDirectory, 'snippets', `liquivelte-criticals.liquid`)
     await vscode.workspace.fs.writeFile(criticalFileUri, Buffer.from(criticalSnippet));

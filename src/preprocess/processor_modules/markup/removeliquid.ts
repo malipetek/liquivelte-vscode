@@ -3,6 +3,7 @@ import type MagicString from 'magic-string';
 import { ReplaceOperation } from '../../../types/replace-operation';
 import type { SubImportsRegistryModuleEntry, ReplaceResult, SubImportRegistryModule } from '../types';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
+import createTagRegex from '../../../utils/create-tag-regex';
 
 
 const replaceLiquid = (html) =>
@@ -61,6 +62,25 @@ export default function removeLiquid (markup: string, ms: MagicString, { rawIncl
       },
       linesAdded: -1 * a.split(/\n/g).length + 1,
       explanation: `Schema is stripped but will be in the liquid output`
+    });
+    return '';
+  });
+
+  markup.replace(createTagRegex('liquid', 'gi'), (a, props, content, offset) =>
+  { 
+    // console.log(content, offset);
+    const line = getLineFromOffset(markup, offset);
+    ms.overwrite(offset, offset + a.length, ``);
+
+    replaceOperations.push({
+      was: {
+        lines: [...new Array(a.match(/\n/g).length).fill('').reduce((c, v, i) => [...c, line + i], [])]
+      },
+      operation: {
+        lines: [line]
+      },
+      linesAdded: -1 * a.split(/\n/g).length + 1,
+      explanation: `Liquid is stripped but will be in the liquid output`
     });
     return '';
   });

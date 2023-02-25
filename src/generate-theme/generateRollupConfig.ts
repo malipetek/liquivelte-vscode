@@ -8,7 +8,9 @@ import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
 import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
+// import postcss from 'rollup-plugin-postcss';
 import { css } from '../utils/liquvelte-rollup';
+// import css from 'rollup-plugin-css-only';
 
 // import css from 'rollup-plugin-css-chunks';
 import cleancss from 'postcss-discard-duplicates';
@@ -78,10 +80,14 @@ export async function generateCombinedEntry (layoutName, templateName)
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.entries'));
   const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.entries', `${layoutNameWithoutExtension}.${templateNameWithoutExtension}.js`);
   const layoutPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.js`);
-  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.custom.js`);
-  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
-  const layoutScriptFile = await vscode.workspace.fs.readFile(customEntryExists ? customEntryPath : layoutPath);
-  const entryContent = await generateCombinedEntryScript(layoutScriptFile.toString(), templateNameWithoutExtension);
+  const customLayoutEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.custom.js`);
+  const customLayoutEntryExists = fs.existsSync(customLayoutEntryPath.fsPath);
+  const layoutScriptFile = await vscode.workspace.fs.readFile(customLayoutEntryExists ? customLayoutEntryPath : layoutPath);
+  
+  const customTemplateEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', `${templateNameWithoutExtension}.custom.js`);
+  const customTemplateEntryExists = fs.existsSync(customTemplateEntryPath.fsPath);
+  
+  const entryContent = await generateCombinedEntryScript(layoutScriptFile.toString(), customTemplateEntryExists ? `${templateNameWithoutExtension}.custom` : templateNameWithoutExtension);
 
   await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
 
@@ -119,10 +125,14 @@ export async function generateTemplateEntry (templateName)
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
   const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
+  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.custom.js');
+  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
+  const templateScriptFile = await vscode.workspace.fs.readFile(customEntryExists ? customEntryPath : entryPath);
+  
   const entryContent = await generateTemplateScript(svelteIncludes);
   await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
   
-  return {[templateNameWithoutExtension]: entryPath.fsPath};
+  return { [templateNameWithoutExtension]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
 }
 
 export const inputOptions = async () =>
@@ -215,7 +225,6 @@ export const inputOptions = async () =>
     // (state['buildConfig'].is_scss ?
     //   scss({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }) :
     //   css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` })),
-    css({}),
     alias({
       entries: [
         { find: 'liquivelte-liquid.js', replacement: path.resolve(srcRoot.fsPath, 'liquivelte-liquid.js') },
@@ -233,6 +242,10 @@ export const inputOptions = async () =>
         inlineSources: !production
       })
     ),
+    // postcss({
+    //   extract: true,
+    // }),
+    css(),
     (production &&
       terser({
         module: true,
@@ -266,18 +279,20 @@ export const outputOptionsList = async () =>
     dir: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets').fsPath,
     entryFileNames: `[name].liquivelte.js`,
     assetFileNames: `[name]-hs[hash].liquivelte.js`,
-    chunkFileNames (file)
-    {
-      let hash, allContent;
-      if (file.modules) {
-        allContent = Object.keys(file.modules).map(k => file.modules[k].code || '').reduce((a, b) => a + b, '');
-        hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
-      } else {
-        allContent = Object.keys(file.moduleIds).map(k => k || '').reduce((a, b) => a + b, '');
-      }
-      hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
-      return `[name]-hs${hash ? hash : '000000'}.liquivelte.js`;
-    },
+    chunkFileNames: `[name]-hs[hash].liquivelte.js`,
+
+    // chunkFileNames (file)
+    // {
+    //   let hash, allContent;
+    //   if (file.modules) {
+    //     allContent = Object.keys(file.modules).map(k => file.modules[k].code || '').reduce((a, b) => a + b, '');
+    //     hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
+    //   } else {
+    //     allContent = Object.keys(file.moduleIds).map(k => k || '').reduce((a, b) => a + b, '');
+    //   }
+    //   hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
+    //   return `[name]-hs${hash ? hash : '000000'}.liquivelte.js`;
+    // },
     manualChunks (id, { getModuleInfo })
     {
       const parsed = path.parse(id);

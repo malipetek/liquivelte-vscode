@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import getNonce from "../utils/get-nonce";
 export const apiBaseUrl = "http://localhost:3002";
 import getThemeDirectory from "../utils/get-theme-directory";
-import { generateAllScripts } from '../generate-theme/process-theme';
+import { generateAllScripts, deleteHashedFiles } from '../generate-theme/process-theme';
 import { activeFileChangeHandler } from '../utils/state-change-handlers';
 import { startWatch, endWatch } from "../utils/watcher";
 import debounce from 'debounce-async';
@@ -160,6 +160,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             await generateAllScripts();
             break;
           }
+          case 'delete-hashed': {
+            await deleteHashedFiles();
+            break;
+          }
           case "save-schema": {
             const currentFile = await vscode.workspace.fs.readFile(vscode.Uri.parse(data.file));
             const content = currentFile.toString();
@@ -225,7 +229,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             break;
           }
           case 'critical-config': {
-            state.criticalConfig = data.value;
+            if (Object.keys(data.value || {}).length) {
+              state.criticalConfig = data.value;
+            }
             break;
           }
           case 'gen-critical': {

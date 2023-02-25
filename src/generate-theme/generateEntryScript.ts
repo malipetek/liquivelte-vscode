@@ -37,10 +37,10 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[]): Prom
   /* {% comment %} DO NOT REMOVE THIS LINE {% endcomment %} */
   // include template module
 
-  document.addEventListener('DOMContentLoaded', () => {
+   const initializeObservers = (doc) => {
     ` +
       svelteIncludes.reduce((acc, include) => `${acc}
-  Array.from(document.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
+  Array.from(doc.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
     let svelteProps = wrapper.svelteProps;
     let rawIncludes = wrapper.rawIncludes;
     let liquid_expression_cache = wrapper.liquid_expression_cache;
@@ -53,18 +53,16 @@ export async function generateLayoutScript (svelteIncludes: parsedToken[]): Prom
           wrapper.svelteComponent = new (await import("../${include.tagName === 'section' ? 'sections' : 'snippets'}/${include.isFolder ? `${include.props.module || include.includeName}/index` : include.props.module || include.includeName}.liquivelte")).default({
             target: wrapper,
             hydrate: true,
-            props: {
-                ...svelteProps,
-                ...rawIncludes,
-                lec: liquid_expression_cache
-            }
+            props: { resetCicR: true },
+            context: new Map([['svelteProps', svelteProps], ['rawIncludes', rawIncludes], ['lec', liquid_expression_cache], ['component_include_count', 0]])
           });
         }
       })();
     });
   });
-  `, '') + `
-  });`;
+  `, '') + ` };
+  document.addEventListener('DOMContentLoaded', () => initializeObservers(document));
+  `;
   } catch (err) {
     throw err;
   }
@@ -97,10 +95,10 @@ export async function generateTemplateScript (svelteIncludes: parsedToken[]): Pr
     observer.observe(el);
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
+  const initializeObservers = (doc) => {
     ` +
       svelteIncludes.reduce((acc, include) => `${acc}
-  Array.from(document.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
+  Array.from(doc.querySelectorAll('.liquivelte-component.${include.props.module || include.includeName}')).forEach(wrapper => {
     let svelteProps = wrapper.svelteProps;
     let rawIncludes = wrapper.rawIncludes;
     let liquid_expression_cache = wrapper.liquid_expression_cache;
@@ -113,18 +111,16 @@ export async function generateTemplateScript (svelteIncludes: parsedToken[]): Pr
           wrapper.svelteComponent = new (await import("../${include.tagName === 'section' ? 'sections' : 'snippets'}/${include.isFolder ? `${include.props.module || include.includeName}/index` : include.props.module || include.includeName}.liquivelte")).default({
             target: wrapper,
             hydrate: true,
-            props: {
-                ...svelteProps,
-                ...rawIncludes,
-                lec: liquid_expression_cache
-            }
+            props: { resetCicR: true },
+            context: new Map([['svelteProps', svelteProps], ['rawIncludes', rawIncludes], ['lec', liquid_expression_cache]])
           });
         }
       })();
     });
   });
-  `, '') + `
-  });`;
+  `, '') + `};
+  document.addEventListener('DOMContentLoaded', () => initializeObservers(document));
+  `;
   } catch (err) {
     throw err;
   }
@@ -163,14 +159,11 @@ export async function generateAllSectionsScript (sections): Promise<string>
         cssFile.href = entry.css;
         document.head.appendChild(cssFile); 
         
+        window.cicR = 0;
         wrapper.svelteComponent = new liquivelteComponent.default({
           target: wrapper,
           hydrate: true,
-          props: {
-              ...svelteProps,
-              ...rawIncludes,
-              lec: liquid_expression_cache
-          }
+          context: new Map([['svelteProps', svelteProps], ['rawIncludes', rawIncludes], ['lec', liquid_expression_cache]])
         });
         
       }

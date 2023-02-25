@@ -8,97 +8,33 @@ import { stripArrowFunctions, putBackArrowFunctions } from '../../../utils/arrow
 import toKebabCase from "../../../utils/to-kebab-case";
 import getNamedSlots from '../../../utils/get-named-slots';
 import parseProps from '../../../utils/parse-props';
+import parseSvelteComponents from '../../../utils/parse-svelte-components';
 import path from 'path';
 
-function parseSvelteComponents(template) {
-  const uppercaseComponents = [];
-
-  // Use a regular expression to find all tag names in the template
-  const tagNameRegex = /<([A-Z][^\s\/>]*)/g;
-  let match;
-  while (match = tagNameRegex.exec(template)) {
-    const tagName = match[1];
-    // Check if the tag name is a custom component (starts with an uppercase letter)
-    if (tagName[0] === tagName[0].toUpperCase()) {
-      // Check if the component has any props
-      const propRegex = /([^\s\/>]+)="{{- [^}]+ -}}"/g;
-      let propMatch;
-      const props = [];
-      while (propMatch = propRegex.exec(template)) {
-        props.push(propMatch[1]);
-      }
-
-      // Check if the component has any spread props
-      const spreadPropRegex = /{[^}]+}/g;
-      let spreadPropMatch;
-      const spreadProps = [];
-      while (spreadPropMatch = spreadPropRegex.exec(template)) {
-        spreadProps.push(spreadPropMatch[0]);
-      }
-
-      // Add the component and its props to the list of uppercase components
-      const [importStatement] = findImportStatementsByVariableName(template, tagName);
-      uppercaseComponents.push({
-        tagName: tagName,
-        props: props,
-        spreadProps: spreadProps,
-        module: importStatement?.moduleName
-      });
-    }
-  }
-
-  return uppercaseComponents;
-}
-
-function findImportStatementsByVariableName(code, variableName) {
-  const importStatements = [];
-
-  // Use a regular expression to find all import statements in the code
-  // This regular expression uses a non-greedy match (the "?" character after the "+" quantifier) to match only the first set of curly braces
-  const importRegex = /import (\{.+?\}) from ['|"](\S+)['|"];/g;
-  let match;
-  while (match = importRegex.exec(code)) {
-    const importedVariables = match[1];
-    const importPath = match[2];
-
-    // Extract the individual imported variables from the import statement
-    const variables = importedVariables
-      .substring(1, importedVariables.length - 1) // remove the curly braces from the string
-      .split(',')
-      .map(variable => variable.trim()); // remove any leading or trailing white space from each variable
-
-    // Check if any of the imported variables match the specified variable name
-    if (variables.includes(variableName)) {
-      // Extract the module name from the import path
-      const moduleName = importPath.split('/').pop();
-
-      importStatements.push({
-        importedVariables: variables,
-        importPath: importPath,
-        moduleName: moduleName
-      });
-    }
-  }
-
-  return importStatements;
-}
-
-export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry, formIncludes, replaceOperations }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [], replaceOperations: any[], rawIncludeRegistry: any[], formIncludes: any[] }): ReplaceResult
+export default function liquivelteImportProcessor (script: string, ms: MagicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry, formIncludes, replaceOperations, filename }: { liquidContent: string, liquidImportsModule: [] , subImportsRegistryModule: [], replaceOperations: any[], rawIncludeRegistry: any[], formIncludes: any[], filename: string }): ReplaceResult
 {
 
   let modules = [];
 
   const componentExpressions = parseSvelteComponents(script);
 
-  script.replace(/import\s+(.+)\s+from\s+['"](.+)\.liquivelte['"]/gi, (a, module, filename, offset) =>
+  script.replace(/import\s+(.+)\s+from\s+['"](.+)['"]/gi, (a, module, importname, offset) =>
   {
+    let filename = importname.replace('.liquivelte', '');
+    const isLiquivelte = /\.liquivelte/.test(importname);
+    const isSvelte = /\.svelte/.test(importname);
+    const isNpmImport = !/^(\.{0,2}\/)/.test(importname);
+
     const line = getLineFromOffset(script, offset);
     
     filename = path.parse(filename).name;
 
-    const isNpmImport = !/^(\.{0,2}\/)/.test(filename);
-
-    modules.push({module, filename, isNpmImport: false});
+    if (/^\{/.test(module)) {
+      const spreadModule = module.replace(/\{|\}|\s/g, '').split(',');
+      spreadModule.forEach(mod => modules.push({ module: mod, filename, isNpmImport, isSvelte, isLiquivelte }));
+    } else {
+      modules.push({ module, filename, isNpmImport, isSvelte, isLiquivelte });
+    }
 
     replaceOperations.push({
       was: {
@@ -113,13 +49,40 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
     return '';
   });
 
-  (componentExpressions || []).filter(exp => !modules.some(m => m.module == exp.tagName))
-    .map(exp => ({
-      base: exp.module,
-      module: exp.tagName, filename: `${exp.module}-${toKebabCase(exp.tagName).toLowerCase()}`,
-      isNpmImport: true
-    }))
-  .concat(modules).forEach(({ module, filename, base, isNpmImport }) =>
+  
+  // (componentExpressions || [])
+  //   .map(exp => { exp, mod: modules.find(m => m.module == exp.tagName) })
+  //   .filter(e => e.mod)
+  //   .map({exp, mod} =>
+  //   {
+  //     return {
+  //       base: exp.module,
+  //       module: exp.tagName, filename: `${exp.module}-${toKebabCase(exp.tagName).toLowerCase()}`,
+  //       isNpmImport: mod.isNpmImport,
+  //       isSvelte
+  //     }
+  //   })
+  modules
+    .filter(importEntry => importEntry.isLiquivelte || importEntry.isNpmImport)
+    .map(importEntry =>
+    {
+      let expression = componentExpressions.find(exp => exp.tagName == importEntry.module);
+
+      if (importEntry.isNpmImport && !expression) {
+        return false;
+      }
+      if (importEntry.isNpmImport) {
+        return {
+          ...importEntry,
+          base: expression.module,
+          module: expression.tagName,
+          filename: `${expression.module}-${toKebabCase(expression.tagName).toLowerCase()}`,
+        };
+      }
+      return importEntry;
+    })
+  .filter(entry => !!entry)
+  .forEach(({ module, filename, base, isNpmImport }) =>
   {
     {
       module = module.replace(/\{|\}/g, '');
@@ -132,15 +95,10 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
         {
           return `{ ${expression.replace(/\.size/gim, '.length')} }`;
         });
-        const liquidImportProps = liquidImportsModule.reduce((c, imp) => `${c} ${imp}={${imp}}`, '') || '';
-        // @ts-ignore
-        const subImportProps = subImportsRegistryModule.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
-        const formIncludesProps = formIncludes.reduce((c, imp) => `${c} form_props_${imp.id}={form_props_${imp.id}} form_inputs_${imp.id}={form_inputs_${imp.id}}`, '') || '';
-        const rawIncludeProps = rawIncludeRegistry.reduce((c, imp) => `${c} ${imp.id}={${imp.id}}`, '') || '';
         if (!children) {
-          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length, `<${module} ${putBackArrowFunctions(props || '')} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} />`);
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length, `<${module} ${putBackArrowFunctions(props || '')} />`);
         } else {
-          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length - children.length - `</${module}>`.length, `<${module} ${ putBackArrowFunctions(props || '')} ${liquidImportProps} ${subImportProps} ${formIncludesProps} ${rawIncludeProps} lec={lec} >`);
+          ms.overwrite(transformOffset(offset), transformOffset(offset) + a.length - children.length - `</${module}>`.length, `<${module} ${putBackArrowFunctions(props || '')} >`);
         }
 
         return '';
@@ -184,7 +142,7 @@ export default function liquivelteImportProcessor (script: string, ms: MagicStri
 propsParsed[key]
 }`).reduce((c, a) => `${c}${c ? '-prsp-' : ''}${a}`, '')}{% endcapture %}
 {% assign modulename = basename | append: '${filename}' %}
-{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, basename: '${isNpmImport ? `${base}-` : ''}' %}
+{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, basename: '${isNpmImport ? `${base}-` : ''}' ${Object.keys(propsParsed).filter(key => /^\{\{/.test(propsParsed[key]) && !/\|/.test(propsParsed[key])).map(key => propsParsed[key].replace(/\{\{(.+)\}\}/, `, ${key}: $1`)).join(' ') } %}
 {% assign props = '' %}`;
       }
 
@@ -203,17 +161,68 @@ smns stands for "slot module name separator"
 `{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
 propsParsed[key]
 }`).reduce((c,a) => `${c}${c?'-prsp-':''}${a}`,'')}{% endcapture %}
+{%- assign component_include_count_before_slots = component_include_count -%}
 ${slotContents.reduce((c, slotEntry) => `${c}
-{%- capture slot_content_${module}_${slotEntry.name} -%}${slotEntry.content}{%- endcapture -%}
+{%- capture slot_content_${module}_${slotEntry.name} -%}<script> console.log('${module}', 'component_include_depth adding 1', {{ component_include_depth | json }}); </script>{% assign component_include_depth = component_include_depth | plus: 1 %}<script> console.log('${module}', 'component_include_depth added 1', {{ component_include_depth | json }}); </script>${slotEntry.content}{%- endcapture -%}{% assign component_include_depth = component_include_depth | minus: 1 %}
 {% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-smns-' | append: '${slotEntry.name}' | append: '-scvs-' | append: slot_content_${module}_${slotEntry.name} %}
 `, '')}
-{%- capture slot_content_def_${module} -%}${remainingContent}{%- endcapture -%}
-{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: '${filename}' | append: '-scvs-' | append: slot_content_def_${module} %}
+{%- capture slot_content_def_${module} -%}<script> console.log('${module}', 'component_include_depth adding 1', {{ component_include_depth | json }}); </script>{% assign component_include_depth = component_include_depth | plus: 1 %}<script> console.log('${module}', 'component_include_depth added 1', {{ component_include_depth | json }}); </script>${remainingContent}{%- endcapture -%}{% assign component_include_depth = component_include_depth | minus: 1 %}
+{%- assign component_include_count_slot_offset = component_include_count | minus: component_include_count_before_slots -%}
 {% assign modulename = basename | append: '${filename}' %}
-{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, slot_contents: slot_content_${module}, basename: '${isNpmImport ? `${base}-` : ''}' %}
+{% assign slot_content_${module} = slot_content_${module} | append: '-scs-' | append: modulename | append: '-scvs-' | append: slot_content_def_${module} %}
+{% include modulename, liquivelte: true, props: props_${module}, sub_include: true, slot_contents: slot_content_${module}, basename: '${isNpmImport ? `${base}-` : ''}' ${Object.keys(propsParsed).filter(key => /^\{\{/.test(propsParsed[key]) && !/\|/.test(propsParsed[key])).map(key => propsParsed[key].replace(/\{\{(.+)\}\}/, `, ${key}: $1`)).join(' ') } %}
+{% assign slot_content_${module} = '' %}
 {% assign props = '' %}`;
     });
   });
+
+
+/* ******************************************************************
+ ****** Including snippet itself within breaks shopify big time *****
+ ****************************************************************** */
+// const { transformed, transformOffset } = stripArrowFunctions(liquidContent);
+
+//   liquidContent = transformed.replace(createTagRegex('svelte:self', 'gi'), (a, props, children, offset) =>
+//   {
+//     let propsParsed = parseProps(props);
+//     Object.keys(propsParsed).forEach(key => propsParsed[key] = putBackArrowFunctions(propsParsed[key]));
+
+//     // count newlines
+//     const line = getLineFromOffset(script, transformOffset(offset));
+//     // ms.overwrite(offset, offset + a.length, a);
+//     replaceOperations.push({
+//       was: {
+//         lines: [line]
+//       },
+//       operation: {
+//         lines: [line]
+//       },
+//       explanation: `This is a liquvete module, its template be included in the theme side.`
+//     });
+//     if (propsParsed.spread) {
+//       const [propsObject] = (script.match(new RegExp(`${propsParsed.spread}\\s*=\\s*(\\{[^\\}]+\\})`, 'gim')) || []);
+//       delete propsParsed.spread;
+//       if (propsObject) {
+//         const spreadProps = eval(propsObject);
+//         propsParsed = { ...propsParsed, ...spreadProps };
+//       }
+//     }
+//     const module = 'self';
+//     if (!children) {
+//       return `
+// {% comment %}
+//   kvsp stands for "key value separator"
+//   prsp stands for "props separator"
+// {% endcomment %}
+// {% capture props_${module} %}${Object.keys(propsParsed).map(key => `${key.replace(/\w+:/, '')}-kvsp-${/(\![^\s]*)/gi.test(propsParsed[key]) ?
+//         `{%- unless ${propsParsed[key].replace(/\{\{-?\s*\!([^\s]*)\s*-?\}\}/gi, '$1')} -%}1{%- endunless -%}` :
+//         propsParsed[key]
+//         }`).reduce((c, a) => `${c}${c ? '-prsp-' : ''}${a}`, '')}{% endcapture %}
+// {% assign modulename = basename | append: '${filename.replace('.svelte', '')}' %}
+// {% include modulename, liquivelte: true, props: props_${module}, sub_include: true, basename: basename ${Object.keys(propsParsed).filter(key => /^\{\{/.test(propsParsed[key]) && !/\|/.test(propsParsed[key])).map(key => propsParsed[key].replace(/\{\{(.+)\}\}/, `, ${key}: $1`)).join(' ')} %}
+// {% assign props = '' %}`;
+//     }
+//   });
 
   const result: ReplaceResult = {
     magicString: ms,

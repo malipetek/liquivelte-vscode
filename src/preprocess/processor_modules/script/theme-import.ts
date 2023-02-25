@@ -5,7 +5,7 @@ import MagicString from 'magic-string';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[]}): ReplaceResult
+export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations, filename }: { liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[], filename?: string}): ReplaceResult
 {  
   script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme(.*)['"]/gim, (a, obj, subObject, afterTheme, offset) =>
   {
@@ -24,7 +24,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       if (!subImportsRegistryModule.some(subImport => subImport.id === entry.id)) {
         subImportsRegistryModule.push(entry);
       }
-      ms.overwrite(offset, offset + a.length, `export let ${obj}${subObject.replace(/\./gi, 'ƒƒ')}; \n${obj}${subObject} = ${obj}${subObject.replace(/\./gi, 'ƒƒ')}`);
+      ms.overwrite(offset, offset + a.length, `export let ${obj}${subObject.replace(/\./gi, 'ƒƒ')}; \ntry{${obj} = ${obj} || {};}catch(e){/*whatever*/}\n${obj}${subObject} = themeImports['${obj}${subObject.replace(/\./gi, 'ƒƒ')}'].find(e => e.component_index == fc(themeImports['${obj}${subObject.replace(/\./gi, 'ƒƒ')}'].map(e => e.component_index), cic, importsSeek)).value`);
       replaceOperations.push({
         was: {
           lines: [line]
@@ -43,9 +43,8 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       if (!liquidImportsModule.some(liquidImport => liquidImport === obj)) {
         liquidImportsModule.push(obj);
       }
-      ms.remove(offset, offset + 'import '.length);
-      ms.appendLeft(offset, 'export let ');
-      ms.remove(offset + ('import ' + obj).length, offset + ('import ' + obj).length + ` from \'theme${afterTheme}\'`.length);
+      ms.overwrite(offset, offset + a.length, `export let ${obj} = themeImports['${obj}'].find(e => e.component_index == fc(themeImports['${obj}'].map(e => e.component_index), cic, importsSeek)).value`);
+
       replaceOperations.push({
         was: {
           lines: [line]

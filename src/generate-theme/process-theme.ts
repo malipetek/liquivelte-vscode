@@ -126,7 +126,9 @@ export async function generateAllScripts ()
         input,
       }, (await outputOptionsList()), 2);
     } else {
-      deleteHashedFiles();
+      if (!state.watching) {
+        deleteHashedFiles();
+      }
       await build({
         ...inputOpts,
         input,
@@ -272,6 +274,7 @@ async function startWatch (inputs, outputOptionsList, pass)
         Object.keys(event.input).map(k => event.input[k]).filter(f => /\.(entries|sections)\/.+\.js/.test(f)).map(f => f.match(/\.(entries|sections)\/(.+)\.js/)[2]).forEach(entryName =>
         {
           const [template, layout] = entryName.split('.');
+          console.log('loading started ', template, layout);
           const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === template);
           if (templateFound) {
             state.templates[templateFound].loading = true;
@@ -284,10 +287,10 @@ async function startWatch (inputs, outputOptionsList, pass)
       }
       if (event.code == 'BUNDLE_END') {
         // state.templates
-        // console.log('template ended', event);
-        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.templates\/.+\.js/.test(f)).map(f => f.match(/\.templates\/(.+)\.js/)[1]).forEach(entryName =>
+        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.(entries|sections)\/.+\.js/.test(f)).map(f => f.match(/\.(entries|sections)\/(.+)\.js/)[2]).forEach(entryName =>
           {
             const [template, layout] = entryName.split('.');
+            console.log('loading ended ', template, layout);
             const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === template);
             if (templateFound) {
               state.templates[templateFound].loading = false;
@@ -320,7 +323,7 @@ async function startWatch (inputs, outputOptionsList, pass)
 
 }
 
-function deleteHashedFiles ()
+export function deleteHashedFiles ()
 {
   try {
     const files = fs.readdirSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/`);

@@ -1,15 +1,15 @@
-import svelte from "rollup-plugin-svelte";
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import { terser } from "rollup-plugin-terser";
-import sveltePreprocess from "svelte-preprocess";
-import css from 'rollup-plugin-css-only';
-import path from "path";
-import fs from "fs";
+const svelte = require("rollup-plugin-svelte");
+const resolve = require("@rollup/plugin-node-resolve").default;
+const commonjs = require("@rollup/plugin-commonjs");
+const sveltePreprocess = require("svelte-preprocess");
+const css = require('rollup-plugin-css-only');
+const path = require("path");
+const fs = require("fs");
+const { terser } = require("rollup-plugin-terser");
 
 const production = !process.env.ROLLUP_WATCH;
 
-export default fs
+module.exports = fs
   .readdirSync(path.join(__dirname, "pages"))
   .map((input) => {
     const name = input.split(".")[0];

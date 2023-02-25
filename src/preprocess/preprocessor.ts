@@ -36,7 +36,7 @@ function applyReplaces (replacers, content, filename, RR: RRType)
   let magicString = new MagicString(content, options);
 
   for (let replacer of replacers) {
-    const replaceResult = replacer(content, magicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry, replaceOperations, formIncludes });
+    const replaceResult = replacer(content, magicString, { liquidContent, liquidImportsModule , subImportsRegistryModule, rawIncludeRegistry, replaceOperations, formIncludes, filename });
     // magicString = replaceResult.magicString;
     liquidContent = replaceResult.liquidContent ? replaceResult.liquidContent : liquidContent;
     // liquidImportsModule = [...liquidImportsModule, ...(replaceResult.liquidImportsModule || [])];
@@ -71,7 +71,7 @@ export function transformSync (content: string)
 
   RR.magicString.append(`
   ${RR.rawIncludeRegistry.reduce((acc, rawInclude) => `${acc}
-  export let ${rawInclude.id}`, '')}`);
+  let ${rawInclude.id} = themeImports['${rawInclude.id}']`, '')}`);
 
     return {
       code: RR.magicString.toString(),
@@ -134,7 +134,7 @@ export default async function liquivelteTransformer (documentContent: string, fi
     },
     script: ({ content, attributes, markup, filename }) =>
     {
-      if (filename === undefined) {
+      if (filename === undefined || attributes.context == 'module') {
         return {
           code: content,
           map: undefined
@@ -163,7 +163,7 @@ export default async function liquivelteTransformer (documentContent: string, fi
           existingContent.indexOf(`var ${themeImport}`) === -1
         ) {
           s.prepend(`
-export let ${themeImport};`);
+let  ${themeImport} = themeImports['${themeImport}'];`);
         }
         RR.replaceOperations.push({
           was: {
@@ -184,7 +184,7 @@ export let ${themeImport};`);
           existingContent.indexOf(`var ${preImport.id};`) === -1
         ) { 
           s.prepend(`
-export let ${preImport.id};`);
+  let ${preImport.id};`);
           RR.replaceOperations.push({
             was: {
               lines: []
@@ -211,7 +211,7 @@ export let ${preImport.id};`);
         });
         prependedLines += 1;
         return `${acc}
-export let ${rawInclude.id};`;
+let ${rawInclude.id} = themeImports['${rawInclude.id}'];`;
       }, '')}`);
       s.prepend(`${RR.formIncludes.reduce((acc, formInclude) =>
       {
@@ -226,11 +226,37 @@ export let ${rawInclude.id};`;
         });
         prependedLines += 2;
         return `${acc}
-  export let form_inputs_${formInclude.id};
-  export let form_props_${formInclude.id};`}, '')}`);
+  let form_inputs_${formInclude.id} = themeImports['form_inputs_${formInclude.id}'];
+  let form_props_${formInclude.id} = themeImports['form_props_${formInclude.id}'];`}, '')}`);
+
+      /* 
+      function findClosest(arr, cic, direction) {
+        // Check if the "cic" value is in the array
+        const match = arr.find(val => val === cic);
+        if (match) {
+          return match;
+        } else {
+          // Find the closest number to "cic"
+          let closest = arr.reduce((prev, curr) => {
+              return (Math.abs(curr - cic) < Math.abs(prev - cic) ? curr : prev);
+          });
+          if (arr.filter(val => val === closest).length > 1 && direction) {
+            return direction === 'higher' ? Math.max(...arr.filter(val => val > cic && val === closest)) : Math.min(...arr.filter(val => val < cic && val === closest));
+          }
+          return closest;
+        }
+      }
+      */
       s.prepend(`
+  export let importsSeek = 'lower';
+  function fc(e,t,r){const n=e.find((e=>e===t));return n||e.reduce(((e,n)=>{let o=Math.abs(e-t),i=Math.abs(n-t);return"higher"===r?n>t&&i<=o?n:e:"lower"===r?n<t&&i<=o?n:e:void 0}))}
+  import { getContext, setContext } from 'svelte';
+  let themeImports = getContext('svelteProps') || {};
+  let lec = getContext('lec') || {};
+  (() => window.cicR = $$props.resetCicR ? 1 : window.cicR + 1 )();
+	const cic = window.cicR;
+
   import cachedLiquid from 'liquivelte-liquid.js';
-  export let lec;
   const liquid = cachedLiquid(lec);
   let index = 0;
 `);

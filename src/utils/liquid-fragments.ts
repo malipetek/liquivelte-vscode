@@ -9,9 +9,10 @@ export const SECTION_BLOCKS_LIQUID = `{% liquid
       assign setting_key_with_quotes = setting | json
       assign block_json = block_json | append: setting_key_with_quotes | append: ":"
 
-      if block.settings[setting].aspect_ratio
+      if block.settings[setting].aspect_ratio and block.settings[setting].src
         assign block_json = block_json | append: '{'
-        assign block_json = block_json | append: '"width": ' | append: block.settings[setting].width | append: ','
+        assign width = block.settings[setting].width | json
+        assign block_json = block_json | append: '"width": ' | append: width | append: ','
         assign block_json = block_json | append: '"aspect_ratio": ' | append: block.settings[setting].aspect_ratio | append: ','
         assign src_with_quotes = block.settings[setting].src | json
         assign block_json = block_json | append: '"src": ' | append: src_with_quotes

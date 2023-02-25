@@ -1,7 +1,8 @@
-import createTagRegex from "./create-tag-regex";
+import createTagRegex, { createStandaloneTagRegex } from "./create-tag-regex";
 import parseProps from "./parse-props";
+import parseSvelteComponents from './parse-svelte-components';
 
-const tags = [
+let tags = [
 "a",
 "abbr",
 "acronym",
@@ -140,19 +141,24 @@ const tags = [
 "xmp"
 ];
 
+tags = ['span'];
+
 export default function (children: string)
 {
   const slotContents = [];
-  children = tags.map(tag => [tag, createTagRegex(tag, 'gim')])
-    .reduce((str, [tag, reg]) => str.replace(reg, (a, props, children) =>
+  const sc = parseSvelteComponents(children);
+  const strtolokfor = sc.map(({tagName}) => createTagRegex(tagName, 'gim')).reduce((str, reg) => str.replace(reg, '') ,children);
+  tags.map(tag => [tag, createTagRegex(tag, 'gim')])
+    .reduce((str, [tag, reg]) => str.replace(reg, (a, props, ch) =>
     {
       props = parseProps(props);
       if (props.slot) {
         slotContents.push({name: props.slot.replace(/"/g, ''), content: a });
+        children = children.replace(a, '');
         return '';
       }
       return a;
-    }), children);
+    }), strtolokfor);
   
   return { slotContents, remainingContent: children };
 }
