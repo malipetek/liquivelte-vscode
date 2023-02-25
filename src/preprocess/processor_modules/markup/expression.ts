@@ -35,7 +35,21 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
       const exp = filter.match(/(\|\s*[^\|]+)(\:\s*[^\|]+)?/gi).map(filt =>
       {
         const filterReplaced = filt.replace(/\|\s*(\w+)\:?\s*([^\|]+)?/gi, '$1 $2');
-        const filter_value = filterReplaced.match(/([\w\.]|(".*?")|('.*?'))+/gi);
+        let filter_value = filterReplaced.match(/([\w\.]:?|(".*?")|('.*?'))+/gi);
+        let next_consumed = false;
+        filter_value = filter_value.reduce((c, v, i) =>
+        {
+          if (/:/.test(v)) {
+            next_consumed = true;
+            return [...c, JSON.stringify({ [v.replace(':', '')]: filter_value[i + 1] })];
+          }
+          if (next_consumed) {
+            next_consumed = false;
+            return c;
+          }
+          return [...c, v];
+        }, []);
+
         return { filter: filter_value[0], value: filter_value[1] || filter_value[2], second_value: filter_value[2] };
       }).reduce((c, e, i) =>
       {
@@ -78,11 +92,14 @@ export default function expressionProcessor (markup: string, ms: MagicString, { 
           const filterReplaced = filt.replace(/\|\s*(\w+)\:?\s*([^\|]+)?/gi, '$1 $2');
           const filter_value = filterReplaced.match(/([\w\.]|(".*?")|('.*?'))+/gi);
           return { filter: filter_value[0], value: filter_value[1] || filter_value[2], second_value: filter_value[2] };
+      }).filter(e =>
+        {
+          return e.filter && /t|image_url|img_url/.test(e.filter)
         }).reduce((c, e, i) =>
         {
-          return `${e.filter}§{{${i == 0 ? expression : c}}}${e.value ? `, {{${e.value}}}${e.second_value !== undefined ? `, {{${e.second_value}}}` : ''}` : ''}`;
+          return `${e.filter}§{{${i == 0 ? expression : c }}}${e.value ? `, {{${e.value}}}${e.second_value !== undefined ? `, {{${e.second_value}}}` : ''}` : ''}`;
         }, '');
-        return a + ` liquivelte-value-cache="${exp}§{{${expression}${filter} }}"`;
+        return a + ` liquivelte-value-cache="${exp.replace(/-?\}\}/, ' | escape -}}')}§{{${expression}${filter} }}"`;
     }
     return a;
   });

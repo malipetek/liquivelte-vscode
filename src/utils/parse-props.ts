@@ -23,13 +23,18 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
   let propStarted = false;
   let valueStarted = false;
   let quoteStarted = false;
+  let valueOmitted = false;
   let currentProp = '';
   let currentValue = '';
 
   for (let i = 0; i < strArr.length; i++) {
     const char = strArr[i];
     switch (true) {
-      case char === ' ':
+      case /\s|\n/.test(char):
+        if (propStarted) {
+          propStarted = false;
+          valueOmitted = true;
+        }
         if (!quoteStarted && !bracket.open) {
             propStarted = false;
             // console.log(char, 'propEnded', currentProp);
@@ -72,17 +77,20 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
     //   valueStarted ? 'valueStarted' : '',
     //   quoteStarted ? 'quoteStarted' : '',
     //   bracket.open ? 'bracket.open' : '');
+
     if (propStarted && !valueStarted && !preventAdd) {
       currentProp += char;
-    } else if (!propStarted && valueStarted && !preventAdd) { 
+    } else if (!propStarted && valueStarted && !preventAdd) {
       currentValue += char;
     } else if (!propStarted && !valueStarted) {
       if (currentProp) {
-        props[currentProp] = currentValue.replace(/^"/, '').replace(/"$/, '');
+        props[currentProp] = valueOmitted ? '1' : currentValue.replace(/^"/, '').replace(/"$/, '');
       }
+      valueOmitted = false;
       currentValue = '';
       currentProp = '';
     }
+   
     preventAdd = false;
   }
 
@@ -94,4 +102,44 @@ export default function parseProps (str): { [key: string]: string, spread?: stri
     }
   });
   return props;
+}
+
+export function parseIncludes(template) {
+  // Use a regular expression to find Liquid include tags in the template
+  const regex = /{%\s*(include|render|section)\s*['"]([\w-]+)['"]\s*(with)?\s*([\w\s:\'",]+)?\s*%}/g;
+  let match;
+  let matches = [];
+
+  // Iterate over the matches and add them to the matches array
+  while ((match = regex.exec(template)) !== null) {
+    let include = {
+      tagName: match[1],
+      includeName: match[2],
+      props: {}
+    };
+
+    if (match[4]) {
+      // Parse the properties from the string and add them to the include object
+      let props = match[4].split(',');
+      props.forEach((prop) => {
+        let [key, value] = prop.split(':').map((x) => x.trim());
+        if (value && value.includes(':')) {
+          // The value is a multi-assignment object, parse it
+          let obj = {};
+          value.split(',').forEach((x) => {
+            let [k, v] = x.split(':').map((x) => x.trim());
+            obj[k] = v;
+          });
+          include.props[key] = obj;
+        } else {
+          // The value is a simple string, add it directly to the include object
+          include.props[key] = value;
+        }
+      });
+    }
+
+    matches.push(include);
+  }
+
+  return matches;
 }

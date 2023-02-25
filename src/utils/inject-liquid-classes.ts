@@ -143,13 +143,22 @@ const tags = [
 
 export default function (hash, liquidContent)
 { 
-  const newliquidContent = liquidContent.replace(/<(\w+)\s([^>]+)>/gim, (a, tag, props) =>
+  
+  let newliquidContent = liquidContent.replace(/<(\w+)\s([^>]+)>/gim, (a, tag, props) =>
   {
     props = ((props || '').trim() || 'class=""').replace(/class="([^"]*)"/g, (a, b) =>
       {
         return ` class="${b} ${hash}"`;
-      });
+    });
       return `<${tag} ${props}>`;
-   });
+  });
+  // newliquidContent = newliquidContent.replace(/class-kvsp-((?:(?!-prsp-).)*)-prsp-/gi, (a, value) =>
+  // { 
+  //   return `class-kvsp-${value} ${hash}-prsp-`;
+  // });
+  // newliquidContent = newliquidContent.replace(/classes-kvsp-((?:(?!-prsp-).)*)-prsp-/gi, (a, value) =>
+  // { 
+  //   return `classes-kvsp-${value} ${hash}-prsp-`;
+  // });
   return newliquidContent;
 }

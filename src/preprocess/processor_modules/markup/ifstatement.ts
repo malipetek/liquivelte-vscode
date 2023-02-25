@@ -14,6 +14,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     ms.overwrite(offset, offset + a.length, `{#if ${exp.replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')} }`);
     replaceOperations.push({
       was: {
@@ -36,6 +37,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
       .replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')} )}`);
     
     replaceOperations.push({
@@ -59,6 +61,7 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
       .replace(/\sand\s/g, ' && ')
       .replace(/\sor\s/g, ' || ')
       .replace(/\.size/gim, '.length')
+      .replace(/blank/gim, undefined)
       .replace(/([^\s]+)\scontains\s(['"][^\s]+['"])/gi, '($1.indexOf($2) > -1)')}}`);
   
     replaceOperations.push({
@@ -108,12 +111,12 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     return '';
   });
 
-  markup.replace(/\{%-*\s*for\s*(.*?)\s*in(.*?)\s*-*%\}/gim, (a, item, arr, offset) =>
+  markup.replace(/\{%-*\s*for\s*(.*?)\s*in(.*?)\s*(\(.*\))?\s*-*%\}/gim, (a, item, arr, index, offset) =>
   {
     const line = getLineFromOffset(markup, offset);
     item = item.replace(/([^\(]+)\s*(\(.+\))?/gim, (a, nm, par) => `${nm}, index ${par ? par : ''}`);
     
-    ms.overwrite(offset, offset + a.length, `{#each ${arr} as ${item} }
+    ms.overwrite(offset, offset + a.length, `{#each ${arr} as ${item} ${index ? index : ''} }
 {@const forloop = {
   first: index === 0,
   index: index + 1,
@@ -137,9 +140,9 @@ export default function ifStatementProcessor (markup: string, ms: MagicString, {
     return '';
   });
 
-  liquidContent = liquidContent.replace(/\{%-*\s*for\s*(.*?)\s*in(.*?)\s*-*%\}/gim, (a, item, arr, offset) =>
+  liquidContent = liquidContent.replace(/\{%-*\s*for\s*(.*?)\s*in(.*?)\s*(\(.*\))?\s*-*%\}/gim, (a, item, arr, index, offset) =>
   { 
-    return `${a}
+    return `${a.replace(index, '')}
     {% assign index = forloop.index0 %}`;
   });
 

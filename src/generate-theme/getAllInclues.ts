@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import path from 'path';
 import { parsedToken } from './types';
 import state from '../utils/state';
+import { parseIncludes } from '../utils/parse-props';
 
 export async function getAllIncludes (templateName: string, firstFile: vscode.Uri, themeDirectoryProvided: string, followIncludes: boolean = true): Promise<{ [key: string]: any, svelteIncludes: parsedToken[] }>
 {
@@ -15,7 +16,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
 
   function checkLiquivelteInclude (e)
   {
-    return e.includeName === 'liquivelte' || (e.tagName === 'section' && (liquivelteSections.includes(`${e.includeName}.liquivelte`) || liquivelteSections.includes(e.includeName)));
+    return e.includeName === 'liquivelte' || e.props?.liquivelte == 'true' || (e.tagName === 'section' && (liquivelteSections.includes(`${e.includeName}.liquivelte`) || liquivelteSections.includes(e.includeName)));
   }
 
   async function getIncludes (file: vscode.Uri)
@@ -28,7 +29,7 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
       try {
         templateFile = (await vscode.workspace.fs.readFile(file)).toString();
       } catch (err) {
-        console.log('include file is not found', file);
+        // console.log('include file is not found', file);
       }
       parsedFiles.set(file.fsPath, templateFile);
       if (path.parse(file.path).ext === '.json') {
@@ -60,32 +61,14 @@ export async function getAllIncludes (templateName: string, firstFile: vscode.Ur
               _file = (await vscode.workspace.fs.readFile(vscode.Uri.joinPath(sectionsFolder, `${section}.liquid`))).toString();
             }
           } catch (err) {
-            console.log('include file is not found', section);
+            // console.log('include file is not found', section);
           }
           return _file;
         }))).reduce((acc, curr) => acc + curr, '');
       }
 
-      const parsed: parsedToken[] = [];
-      (templateFile || '').replace(/\{%-?\s(\w+)[\s\n]['"]([^"']+)['"]?(?:with|,)?([^%]*)-?%\}/gim, (a, tagName, includeName, afterWithOrComma, offset) =>
-      {
-        let props = {};
-        if (tagName === 'include' || tagName === 'render') {
-          (afterWithOrComma || '').replace(/(with|,)?[\s\n]*((\w+):\s*['"]([^"']+)['"])/g, (a, withOrComma, exp, key, value) =>
-          {
-            props[key] = value;
-            return '';
-          });
-        }
-
-
-        parsed.push({
-          tagName,
-          includeName,
-          props
-        });
-        return '';
-      });
+      const parsed: parsedToken[] = parseIncludes((templateFile || ''));
+      
       (templateFile || '').replace(/\{%-?\s(\w+)[\s\n]['"]?([^"'\s]+)['"]?\s*-?%\}/gim, (a, tagName, includeName, afterWithOrComma, offset) => {
       
         if (tagName === 'layout') {

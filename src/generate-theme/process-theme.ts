@@ -12,7 +12,7 @@ import state from '../utils/state';
 import debounce from 'debounce-async';
 
 import { generateSectionScript, generateAllSectionsScript } from './generateEntryScript';
-import { generateTemplateEntry, outputOptionsList, inputOptions } from './generateRollupConfig';
+import { generateTemplateEntry, generateLayoutEntry, generateCombinedEntry, outputOptionsList, inputOptions } from './generateRollupConfig';
 import { generateIncludeScripts } from './generateIncludes';
 import { sendStats } from '../sidebar/sidebar-provider';
 const { workspaceFolders } = vscode.workspace;
@@ -59,29 +59,28 @@ export async function generateAllScripts ()
         }
       });
     } catch (e) {
-      console.error(e);
+      console.warn('could not get folder for deletition ', e);
     }
   }
   async function doBuildAllTemplateOutputs ()
   {
     
     let input = {};
-    for (let template of templates.filter(e => e[1] === 1)) {
-      const inputEntry = await generateTemplateEntry(template[0], false);
-  
-      input = {
-        ...input,
-        ...(inputEntry || {})
-      };
+    // @ts-ignore
+    templates = (await Promise.all(templates.filter(e => e[1] === 1).map(e => e[0]).map(async templ => (await generateTemplateEntry(templ) ? templ : 0)))).filter(e => !!e);
+    for (let layout of layouts.filter(e => e[1] === 1)) {
+      await generateLayoutEntry(layout[0]);
+      for (let template of templates) { 
+        const inputEntry = await generateCombinedEntry(layout[0], template);
+        
+              input = {
+                ...input,
+                ...(inputEntry || {})
+              };
+      }
     }
-    for (let template of layouts.filter(e => e[1] === 1)) {
-      const inputEntry = await generateTemplateEntry(template[0], true);
-  
-      input = {
-        ...input,
-        ...(inputEntry || {})
-      };
-    }
+    
+    
     const liquivelteSections = (await vscode.workspace.fs.readDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', 'sections'))).map(pair => pair[0]);
     for (let section of liquivelteSections) {
       let isFolder = section.indexOf('.liquivelte') === -1;
@@ -95,7 +94,7 @@ export async function generateAllScripts ()
       };
     }
 
-    deleteUnusedTemplateEntries(input);
+    // deleteUnusedTemplateEntries(input);
 
     const allSectionsLoaderContent = await generateAllSectionsScript(liquivelteSections);
     const allSectionsLoaderPath = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets',  'liquivelte-sections-loader.js.liquid');
@@ -116,13 +115,20 @@ export async function generateAllScripts ()
       state.layouts[layoutName[0]] = { loading: true };
     }
 
+    // input = {
+    //   ...input,
+    //   "sw": vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'src', 'sw', 'sw.js').fsPath
+    // };
+
     if (state.watching && !state.watcher) {
       await startWatch({
         ...inputOpts,
         input,
       }, (await outputOptionsList()), 2);
     } else {
-      deleteHashedFiles();
+      if (!state.watching) {
+        deleteHashedFiles();
+      }
       await build({
         ...inputOpts,
         input,
@@ -265,13 +271,15 @@ async function startWatch (inputs, outputOptionsList, pass)
         state['buildWarnings'] = [];
 
         // state.templates
-        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.templates\/.+\.js/.test(f)).map(f => f.match(/\.templates\/(.+)\.js/)[1]).forEach(templateName =>
+        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.(entries|sections)\/.+\.js/.test(f)).map(f => f.match(/\.(entries|sections)\/(.+)\.js/)[2]).forEach(entryName =>
         {
-          const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === templateName);
+          const [template, layout] = entryName.split('.');
+          console.log('loading started ', template, layout);
+          const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === template);
           if (templateFound) {
             state.templates[templateFound].loading = true;
           }
-          const layoutFound = Object.keys(state.layouts).find(f => f.replace(/\.liquid|\.json/, '') === templateName);
+          const layoutFound = Object.keys(state.layouts).find(f => f.replace(/\.liquid|\.json/, '') === layout);
           if (layoutFound) {
             state.layouts[layoutFound].loading = true;
           }
@@ -279,16 +287,17 @@ async function startWatch (inputs, outputOptionsList, pass)
       }
       if (event.code == 'BUNDLE_END') {
         // state.templates
-        // console.log('template ended', event);
-        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.templates\/.+\.js/.test(f)).map(f => f.match(/\.templates\/(.+)\.js/)[1]).forEach(templateName =>
+        Object.keys(event.input).map(k => event.input[k]).filter(f => /\.(entries|sections)\/.+\.js/.test(f)).map(f => f.match(/\.(entries|sections)\/(.+)\.js/)[2]).forEach(entryName =>
           {
-            const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === templateName);
+            const [template, layout] = entryName.split('.');
+            console.log('loading ended ', template, layout);
+            const templateFound = Object.keys(state.templates).find(f => f.replace(/\.liquid|\.json/, '') === template);
             if (templateFound) {
-              state.templates[templateFound].loading = true;
+              state.templates[templateFound].loading = false;
             }
-            const layoutFound = Object.keys(state.layouts).find(f => f.replace(/\.liquid|\.json/, '') === templateName);
+            const layoutFound = Object.keys(state.layouts).find(f => f.replace(/\.liquid|\.json/, '') === layout);
             if (layoutFound) {
-              state.layouts[layoutFound].loading = true;
+              state.layouts[layoutFound].loading = false;
             }
           });
         // event.result.write();
@@ -314,7 +323,7 @@ async function startWatch (inputs, outputOptionsList, pass)
 
 }
 
-function deleteHashedFiles ()
+export function deleteHashedFiles ()
 {
   try {
     const files = fs.readdirSync(`${vscode.Uri.joinPath(workspaceFolders[0].uri, state.themeDirectory).fsPath}/assets/`);

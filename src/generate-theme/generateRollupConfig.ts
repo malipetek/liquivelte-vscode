@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import path from 'path';
+import fs from 'fs';
 
 import svelte from 'rollup-plugin-svelte';
 import commonjs from '@rollup/plugin-commonjs';
@@ -7,7 +8,9 @@ import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
 import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
+// import postcss from 'rollup-plugin-postcss';
 import { css } from '../utils/liquvelte-rollup';
+// import css from 'rollup-plugin-css-only';
 
 // import css from 'rollup-plugin-css-chunks';
 import cleancss from 'postcss-discard-duplicates';
@@ -25,16 +28,78 @@ const tailwindcssNesting = require('tailwindcss/nesting');
 import state from '../utils/state';
 
 import getThemeDirectory from '../utils/get-theme-directory';
-import { generateEntryScript } from './generateEntryScript';
+import { generateTemplateScript, generateLayoutScript, generateCombinedEntryScript } from './generateEntryScript';
 import { getAllIncludes } from './getAllInclues';
 
-export async function generateTemplateEntry (templateName, isLayout)
+export async function generateLayoutEntry(layoutName) {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  const { themeDirectory } = await getThemeDirectory();
+  const layoutsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout');
+  const layout = vscode.Uri.joinPath(layoutsFolder, layoutName);
+  
+  const layoutNameRaw = layoutName;
+  layoutName = layoutName.replace(/\//, '-');
+  const layoutNameWithoutExtension = layoutName.replace(/\.(liquid|json)/g, '');
+
+  /*
+  * Generate the script for the template
+  * generate entry script
+  */
+  const allIncludes = await getAllIncludes(layoutName, layout, themeDirectory);
+  // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
+  let svelteIncludes = allIncludes.svelteIncludes;
+  try {
+    state.layouts[layoutNameRaw].hasIncludes = svelteIncludes.length !== 0;
+  } catch (err) {
+    // whatevier
+  }
+
+
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts'));
+  const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.js`);
+  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.custom.js`);
+  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
+  const entryContent = await generateLayoutScript(svelteIncludes);
+
+  await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
+
+  return {[`${layoutNameWithoutExtension}`]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
+}
+export async function generateCombinedEntry (layoutName, templateName)
+{
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+
+  const layoutNameRaw = layoutName;
+  layoutName = layoutName.replace(/\//, '-');
+  const layoutNameWithoutExtension = layoutName.replace(/\.(liquid|json)/g, '');
+
+  const templateNameRaw = templateName;
+  templateName = templateName.replace(/\//, '-');
+  const templateNameWithoutExtension = templateName.replace(/\.(liquid|json)/g, '');
+
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.entries'));
+  const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.entries', `${layoutNameWithoutExtension}.${templateNameWithoutExtension}.js`);
+  const layoutPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.js`);
+  const customLayoutEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.layouts', `${layoutNameWithoutExtension}.custom.js`);
+  const customLayoutEntryExists = fs.existsSync(customLayoutEntryPath.fsPath);
+  const layoutScriptFile = await vscode.workspace.fs.readFile(customLayoutEntryExists ? customLayoutEntryPath : layoutPath);
+  
+  const customTemplateEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', `${templateNameWithoutExtension}.custom.js`);
+  const customTemplateEntryExists = fs.existsSync(customTemplateEntryPath.fsPath);
+  
+  const entryContent = await generateCombinedEntryScript(layoutScriptFile.toString(), customTemplateEntryExists ? `${templateNameWithoutExtension}.custom` : templateNameWithoutExtension);
+
+  await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
+
+  return {[`${layoutNameWithoutExtension}.${templateNameWithoutExtension}`]: entryPath.fsPath};
+
+}
+export async function generateTemplateEntry (templateName)
 {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     const { themeDirectory } = await getThemeDirectory();
     const templatesFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'templates');
-    const layoutsFolder = vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'layout');
-    const template = vscode.Uri.joinPath(isLayout ? layoutsFolder : templatesFolder, templateName);
+    const template = vscode.Uri.joinPath(templatesFolder, templateName);
     
     const templateNameRaw = templateName;
     templateName = templateName.replace(/\//, '-');
@@ -48,31 +113,26 @@ export async function generateTemplateEntry (templateName, isLayout)
     // console.log('allIncludes of ', templateName, '==> ', allIncludes.includes.map(e => e.file).join(', '));
     let svelteIncludes = allIncludes.svelteIncludes;
     try {
-    if (svelteIncludes.length === 0) {
-      if (isLayout) {
-        state.layouts[templateNameRaw].hasIncludes = false;
-      } else {
-        state.templates[templateNameRaw].hasIncludes = false;
+      if (svelteIncludes.length === 0) {
+          state.templates[templateNameRaw].hasIncludes = false;
+          return 0;
       }
-      return 0;
-    }
-    
-    if (isLayout) {
-      state.layouts[templateNameRaw].hasIncludes = true;
-    } else {
       state.templates[templateNameRaw].hasIncludes = true;
+    } catch (err) {
+      // whatevier
     }
-  } catch (err) {
-    // whatevier
-  }
 
+
+  await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
+  const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
+  const customEntryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.custom.js');
+  const customEntryExists = fs.existsSync(customEntryPath.fsPath);
+  const templateScriptFile = await vscode.workspace.fs.readFile(customEntryExists ? customEntryPath : entryPath);
   
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates'));
-    const entryPath = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src', '.templates', templateNameWithoutExtension + '.js');
-    const entryContent = await generateEntryScript(svelteIncludes);
-    await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
-    
-    return {[templateNameWithoutExtension]: entryPath.fsPath};
+  const entryContent = await generateTemplateScript(svelteIncludes);
+  await vscode.workspace.fs.writeFile(entryPath, Buffer.from(entryContent));
+  
+  return { [templateNameWithoutExtension]: customEntryExists ? customEntryPath.fsPath : entryPath.fsPath};
 }
 
 export const inputOptions = async () =>
@@ -84,15 +144,15 @@ export const inputOptions = async () =>
   const srcRoot = vscode.Uri.joinPath(workspaceFolders[0].uri, 'src');
   // see below for details on these options
   const production = !state.watching;
-  const tailwindConfigUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'tailwind.config.js');
-  const tailwindConfigFromWorkspaceFile = (await vscode.workspace.fs.readFile(tailwindConfigUri)).toString();
   let tailwindConfigFromWorkspace = {};
   try {
+    const tailwindConfigUri = vscode.Uri.joinPath(workspaceFolders[0].uri, 'tailwind.config.js');
+    const tailwindConfigFromWorkspaceFile = (await vscode.workspace.fs.readFile(tailwindConfigUri)).toString();
     if (tailwindConfigFromWorkspaceFile) {
       tailwindConfigFromWorkspace = (await import(tailwindConfigUri.fsPath)).default;
     }
   } catch (err) {
-    vscode.window.showErrorMessage('Could not import tailwind.config.js' + `
+    vscode.window.showWarningMessage('Could not import tailwind.config.js' + `
     ${err.message}`);
   }
 
@@ -144,16 +204,16 @@ export const inputOptions = async () =>
       ]
     }
   });
-
+  
   return {
   input: 'will be set later',
-  treeshake: false,
+  treeshake: 'recommended',
     plugins: [
-      liquivelteSveltePlugin({
-        themeDirectory: path.join(workspaceFolders[0].uri.fsPath, themeDirectory),
-        preprocess: liquiveltePreprocessor,
-        emitCss: true
-      }),
+    liquivelteSveltePlugin({
+      themeDirectory: path.join(workspaceFolders[0].uri.fsPath, themeDirectory),
+      preprocess: liquiveltePreprocessor,
+      emitCss: true
+    }),
     svelte({
       preprocess: sveltePreprocessor,
       compilerOptions: {
@@ -165,7 +225,6 @@ export const inputOptions = async () =>
     // (state['buildConfig'].is_scss ?
     //   scss({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` }) :
     //   css({ output: `${templateName.replace(/\.[^\.]+$/, '')}.liquivelte.css` })),
-    css({}),
     alias({
       entries: [
         { find: 'liquivelte-liquid.js', replacement: path.resolve(srcRoot.fsPath, 'liquivelte-liquid.js') },
@@ -183,6 +242,10 @@ export const inputOptions = async () =>
         inlineSources: !production
       })
     ),
+    // postcss({
+    //   extract: true,
+    // }),
+    css(),
     (production &&
       terser({
         module: true,
@@ -205,20 +268,32 @@ export const outputOptionsList = async () =>
   const workspaceFolders = vscode.workspace.workspaceFolders;
   const { isTheme, themeDirectory, folders } = await getThemeDirectory();
 
+  const production = !state.watching;
+  
   return [{
     sourcemap: false,
     name: 'theme.liquivelte.[name]',
     format: 'es',
     minifyInternalExports: false,
+    preserveModules: false,
     dir: vscode.Uri.joinPath(workspaceFolders[0].uri, themeDirectory, 'assets').fsPath,
     entryFileNames: `[name].liquivelte.js`,
     assetFileNames: `[name]-hs[hash].liquivelte.js`,
-    chunkFileNames (file)
-    {
-      const allContent = Object.keys(file.modules).map(k => file.modules[k].code || '').reduce((a, b) => a + b, '');
-      return `[name]-hs${allContent ? uid(allContent) : '000000'}.liquivelte.js`;
-    },
-    manualChunks (id)
+    chunkFileNames: `[name]-hs[hash].liquivelte.js`,
+
+    // chunkFileNames (file)
+    // {
+    //   let hash, allContent;
+    //   if (file.modules) {
+    //     allContent = Object.keys(file.modules).map(k => file.modules[k].code || '').reduce((a, b) => a + b, '');
+    //     hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
+    //   } else {
+    //     allContent = Object.keys(file.moduleIds).map(k => k || '').reduce((a, b) => a + b, '');
+    //   }
+    //   hash = uid(allContent + (production ? ("" + new Date().getTime()) : ''));
+    //   return `[name]-hs${hash ? hash : '000000'}.liquivelte.js`;
+    // },
+    manualChunks (id, { getModuleInfo })
     {
       const parsed = path.parse(id);
       if (/\/sections\/[^\/]+\/.+/.test(id)) {
@@ -230,6 +305,20 @@ export const outputOptionsList = async () =>
       if (id.includes('liquivelte-liquid')) {
         return 'liquivelte-liquid';
       }
+
+      const match = /node_modules\/(framework7-liquivelte)\/components.*\/([^\/]+)\.(js|liquivelte)/.exec(id);
+
+      if (match) {
+        const [ ,packagename, modulename, extension] = match;
+
+        return `${packagename}-${modulename}`;
+      }
+
+      if (id.includes('framework7-liquivelte')) {
+        return 'framework7-liquivelte';
+      }
+      
+      
       if (parsed.base.includes('.module')) {
         return parsed.base.replace('.module', '');
       }

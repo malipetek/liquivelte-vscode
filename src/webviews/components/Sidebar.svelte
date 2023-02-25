@@ -24,6 +24,10 @@ import { template } from "lodash";
 import { replace } from "lodash";
 import SidePage from "./SidePage.svelte";
 
+  let _hasSchema;
+
+  hasSchema.subscribe(payload => _hasSchema = payload);
+
   export let vscode;
   export const isDarkTheme = true;
 
@@ -514,6 +518,16 @@ import SidePage from "./SidePage.svelte";
             <button on:click={() => critPageOpen = true}>
               Generate Critical CSS
             </button>
+
+            <button
+              class="secondary"
+              on:click={() =>
+                    vscode.postMessage({
+                      type: "delete-hashed",
+                      value: undefined,
+                    })}>
+              Delete hashed assets
+            </button>
           </div>
           <hr />
           <div class="block">
@@ -666,7 +680,7 @@ import SidePage from "./SidePage.svelte";
       {/if}
     </span>
     <span slot="tab2">
-      {#if $hasSchema}
+      {#if _hasSchema}
         <h3>Schema found</h3>
         <Filelink href={currentFile}>
           <h3>{((currentFile || "").match(/[^\/]+$/) || ["no file"])[0]}</h3>

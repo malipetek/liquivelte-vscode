@@ -175,53 +175,42 @@ export function liquivelteSveltePlugin (options = {})
 				};
 				// console.log('deptree ', inclTree);
 
-				const deps = getDeps(id);
-				const prebuildDone = state['prebuildDone'];
-				const watchMode = state['watching'];
+				// const deps = getDeps(id);
+				// const prebuildDone = state['prebuildDone'];
+				// const watchMode = state['watching'];
 				
-				const result = (await new Promise((done) =>
-				{
-					(async () =>
-					{
-						async function generateTransformedModules() {
-							let lastResult = null;
-							for (let dep of deps) {
-								let res;
-								if (state.preprocess_results_cache.has(dep) && !state.preprocess_results_cache.get(dep).shouldRebuild) {
-									res = state.preprocess_results_cache.get(dep);
-									res.shouldRebuild = !prebuildDone;
-								} else {
-									// console.log('Caches ', deps.map(dep => `${dep.match(/[^\/]+$/)[0]} ${state.preprocess_results_cache.has(dep) ? 'has' : 'doesnt have'} cached result`));
-									// console.log('Submodules built ', deps.filter(dep => dep != id).every(dep => state.preprocess_results_cache.has(dep)));
-									res = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep), lastResult);
-									res.shouldRebuild = !prebuildDone;
-									state.preprocess_results_cache.set(dep, res);
-								}
-								lastResult = res;
-							}
-							return lastResult;
-						}
+				// const result = (await new Promise((done) =>
+				// {
+				// 	(async () =>
+				// 	{
+				// 		async function generateTransformedModules() {
+				// 			let lastResult = null;
+				// 			for (let dep of deps) {
+				// 				let res;
+				// 				if (state.preprocess_results_cache.has(dep) && !state.preprocess_results_cache.get(dep).shouldRebuild) {
+				// 					res = state.preprocess_results_cache.get(dep);
+				// 					res.shouldRebuild = !prebuildDone;
+				// 				} else {
+				// 					// console.log('Caches ', deps.map(dep => `${dep.match(/[^\/]+$/)[0]} ${state.preprocess_results_cache.has(dep) ? 'has' : 'doesnt have'} cached result`));
+				// 					// console.log('Submodules built ', deps.filter(dep => dep != id).every(dep => state.preprocess_results_cache.has(dep)));
+				// 					res = await liquivelteTransformer(fs.readFileSync(dep).toString(), vscode.Uri.parse(dep), lastResult);
+				// 					res.shouldRebuild = !prebuildDone;
+				// 					state.preprocess_results_cache.set(dep, res);
+				// 				}
+				// 				lastResult = res;
+				// 			}
+				// 			return lastResult;
+				// 		}
 
-						let result = await generateTransformedModules();
-						// console.log('shouldRebuild', result.shouldRebuild);
-						if (result.shouldRebuild) {
-							result = await generateTransformedModules();
-						}
-						// let attempts = 0;
-						// while (prebuildDone && !deps.filter(dep => dep != id).every(dep => state.preprocess_results_cache.has(dep))) {
-						// 	attempts++;
-						// 	if (attempts > 10) {
-						// 		console.log('Too many attempts to build submodules for ', id);
-						// 		break;
-						// 	}
-						// 	result = await generateTransformedModules();
-						// }
-						result.deps = deps.filter(dep => dep != id);
-						state.preprocess_results_cache.set(id, result);
-						return result;
-					})().then(finalRes => done(finalRes)).catch(err => { throw err; });
-				}));
 
+						
+				// 		result.deps = deps.filter(dep => dep != id);
+				// 		state.preprocess_results_cache.set(id, result);
+				// 		return result;
+				// 	})().then(finalRes => done(finalRes)).catch(err => { throw err; });
+				// }));
+				
+				let result = await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id));
 				// const result = await liquivelteTransformer(fs.readFileSync(id).toString(), vscode.Uri.parse(id));
 				if (result.map) svelte_options.sourcemap = result.map;
 				code = result.content;
@@ -287,7 +276,7 @@ export function liquivelteSveltePlugin (options = {})
 		generateBundle: function generateBundle (opts, bundle)
 		{
 
-function outpusLiquidAndSchemas (module)
+function outputLiquidAndSchemas (module)
 {
 		if (module.meta.isSection) {
 			const that = this;
@@ -329,9 +318,13 @@ function outpusLiquidAndSchemas (module)
 		let id = module.id;
 		let themePath = themeDirectory;
 		let filePath = path.parse(id);
+		let parentFolderisSectionsOrSnippets = filePath.dir.split('/').includes('snippets') || filePath.dir.split('/').includes('sections');
 		let parentFolderSectionsOrSnippets = filePath.dir.split('/').reduce((c, piece) => c.includes('snippets') || c.includes('sections') ? [...c] : [...c, piece], []).join('/');
-		if (!parentFolderSectionsOrSnippets) {
-			throw new Error(`Could not determine parent folder for ${id}`);
+		let isNodeModule = filePath.dir.split('/').includes('node_modules');
+		let [pkgName] = filePath.dir.split('/').reduce((c, piece) => c.includes('node_modules') ? [piece] : [...c, piece], []);
+
+		if (!parentFolderisSectionsOrSnippets && !isNodeModule) {
+			throw new Error(`Could not determine parent folder for ${id}, liquivelte component should be in `);
 		}
 		const parentFolder = path.parse(parentFolderSectionsOrSnippets);
 		let fileName = filePath.base;
@@ -346,44 +339,35 @@ function outpusLiquidAndSchemas (module)
 		if (parentFolderName == 'sections' && path.parse(filePath.dir).base !== 'sections') {
 			parentFolderName = 'snippets';
 		}
-		const dest = path.resolve(themePath, parentFolderName, fileName.replace('.liquivelte', '.liquid'));
+		if (isNodeModule) {
+			parentFolderName = 'snippets';
+		}
+		const dest = path.resolve(themePath, parentFolderName, `${isNodeModule ? pkgName + '-' : ''}${fileName.replace('.liquivelte', '.liquid')}`);
+		let slots = [];
+		let svelte_selfs = [];
 
+		const slugify = (str = "") =>
+			str.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
+
+		const handle = slugify(`${isNodeModule ? pkgName + '_' : ''}${path.parse(id).name}`);
+		
 		let finalLiquidContent = imp.liquidContent.replace(/<slot\s*(name="([^"]+)")?[^/]*\/>/gi, function (a, named, name, offset)
 		{
+			if (named) {
+				slots.push(name);
+			}
 			if (!named) {
-				return `{%- liquid 
-	assign slot_contents_and_values = slot_contents | split: '-scs-'
-	for content_and_value in slot_contents_and_values
-	assign module = content_and_value | split: '-scvs-' | first
-	assign value = content_and_value | split: '-scvs-' | last
-	if module == '${path.parse(id).name}'
-	assign children = value | strip
-	endif
-	endfor
-	-%}
-	{%- if children != blank -%}
-	{{- children -}}
-	{%- endif -%}
-	{%- assign children = '' -%}
+				return `
+		{%- if slot_default_${handle} != blank -%}
+			{{- slot_default_${handle} -}}
+		{%- endif -%}
 	`;
 			}
-			return `{%- liquid
-	assign slot_contents_and_values = slot_contents | split: '-scs-'
-	for content_and_value in slot_contents_and_values
-	assign module_and_slotname = content_and_value | split: '-scvs-' | first
-	assign module = module_and_slotname | split: '-smns-' | first
-	assign name = module_and_slotname | split: '-smns-' | last
-	assign value = content_and_value | split: '-scvs-' | last
-	if module == '${path.parse(id).name}' and name == '${name}'
-	assign children_${name} = value | strip
-	endif
-	endfor
-	-%}
-	{%- if children_${name} != blank -%}
-	{{- children_${name} -}}
+			return `
+	{%- if slot_${name}_${handle} != blank -%}
+		{{- slot_${name}_${handle} -}}
 	{%- endif -%}
-	{%- assign children_${name} = '' -%}
-	`;
+`;
 
 		});
 
@@ -416,7 +400,7 @@ function outpusLiquidAndSchemas (module)
 			return `
 	{%- liquid 
 	assign dynamic_classes = ''
-	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')}
+	${Object.keys(dynamicClasses).map(exp => `  if ${exp.replace(/[\{\}]/gim, '').replace(/^[^a-zA-Z]/, '')} ${/[!\=]\=/.test(exp) ? '' : '!= blank'}
 	assign dynamic_classes = dynamic_classes${dynamicClasses[exp].reduce((c, cls) => `${c} | append: ' ${cls}'`, '')}
 	endif`).join(`
 	`)}
@@ -443,31 +427,74 @@ function outpusLiquidAndSchemas (module)
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const JSONParseFn = `function JSONparse(n){try{return JSON.parse(n)}catch(t){try{const e=parseInt(t.message.match(/position\\s+(\\d+)/)[1],10),s=n.slice(0,e+1).split("\\n"),i=s.length,l=n.split("\\n"),r=s[s.length-1].length-1,c=l.slice(0,i).join("\\n")+"\\n"+new Array(r).fill(" ").join("")+"👆\\n"+l.slice(i).join("\\n");return console.log(c),{}}catch(n){throw t}}}`;
 		const liquidPropsParser = `{%- liquid
-	assign props_arr = props | split: '-prsp-'
-	for prop in props_arr
-	assign propName = prop | split: '-kvsp-' | first
-	assign propValue = prop | split: '-kvsp-' | last | remove: '"'
-	if propValue contains '{' and propValue contains '}'
-	assign propValue = propValue | remove: '{' | remove: '}'
-	assign propValueArr = propValue | split: ','
-	for entry in propValueArr
-	assign key = entry | split: ':' | first | strip | remove: '"'
-	assign value = entry | split: ':' | last | strip | remove: '"'
-	assign composite_key = propName | append: '_' | append: key
+	assign lv_props_arr = props | split: '-prsp-'
+	for lv_prop in lv_props_arr
+	assign lv_prop_and_value = lv_prop | split: '-kvsp-'
+	assign lv_propName = lv_prop_and_value | first
+	if lv_prop_and_value.size > 1
+		assign lv_propValue = lv_prop_and_value | last | remove: '"'
+	else
+		assign lv_propValue = ''	
+	endif
+	if lv_propValue == '0'
+		assign lv_propValue = lv_propValue | times: 1
+	endif
+	if lv_propValue contains '{' and lv_propValue contains '}'
+	assign lv_propValue = lv_propValue | remove: '{' | remove: '}'
+	assign lv_propValueArr = lv_propValue | split: ','
+	for lv_entry in lv_propValueArr
+	assign lv_key = lv_entry | split: ':' | first | strip | remove: '"'
+	assign lv_value = lv_entry | split: ':' | last | strip | remove: '"'
+	assign composite_key = lv_propName | append: '_' | append: lv_key
 	${exportedObjectVariables.reduce((c, v) => `${c}
 	${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
 	if composite_key == '${Object.keys(v)[0]}_${k}'
-		assign ${Object.keys(v)[0]}_${k} = value
+		assign ${Object.keys(v)[0]}_${k} = lv_value
 	endif  
 	`, '')}
 	`, '')}
 	endfor
-	endif${exportedVariables.reduce((c, v) => `${c}
-	if propName == '${v}'
-	assign ${v} = propValue
+	endif${exportedVariables.concat(liquidImportsModule).reduce((c, v) => `${c}
+	if lv_propName == '${v}' and ${v} == blank
+		assign ${v} = lv_propValue
 	endif`, '')}
 	endfor
 	-%}`;
+		const liquidPropsResetter = `{%- liquid
+			${exportedObjectVariables.reduce((c, v) => `${c}
+			${Object.keys(v[Object.keys(v)[0]]).reduce((cc, k) => `${cc}
+			assign ${Object.keys(v)[0]}_${k} = null
+			`, '')}
+			`, '')}
+			${exportedVariables.reduce((c, v) => `${c}
+			assign ${v} = null`, '')}
+			-%}`;
+		
+		const snippet_name = `${isNodeModule ? pkgName + '-' : ''}${path.parse(id).name}`;
+		const slotsParser = `
+			{%- liquid
+				assign slot_contents_and_values = slot_contents | split: '-scs-'
+				for content_and_value in slot_contents_and_values
+					assign module_and_slotname = content_and_value | split: '-scvs-' | first
+					assign lv_module = module_and_slotname | split: '-smns-' | first
+					assign lv_name = module_and_slotname | split: '-smns-' | last
+					assign lv_value = content_and_value | split: '-scvs-' | last
+					${slots.map(name =>
+						`if lv_module == '${snippet_name}' and lv_name == '${name}'
+						assign slot_${name}_${handle} = lv_value | strip
+					endif
+					`).join('')}
+					if lv_module == '${snippet_name}'
+						assign slot_default_${handle} = lv_value | strip
+					endif
+				endfor
+				-%}`;
+		const slotsResetter = `{%- liquid 
+			assign slot_default_${handle} = null
+			${slots.map(name => `assign slot_${name}_${handle} = null
+			`).join('')}
+			-%}`;
+		
 		const propsParserScript = `<script class="liquivelte-prop-script">(() => {
 	var propScript = Shopify.designMode && window.propScriptForDesignMode ? window.propScriptForDesignMode : document.currentScript;
 	${parsePropsFn}
@@ -487,7 +514,15 @@ function outpusLiquidAndSchemas (module)
 	// console.log('wrapper', wrapper);
 	// console.log('parsing props for svelte component');
 	try{
-	wrapper.svelteProps = { ...(wrapper.svelteProps || {}), ...(JSONparse(propScript.previousElementSibling.textContent)) };
+		const themeImports = (JSONparse(propScript.previousElementSibling.textContent));
+		wrapper.svelteProps = wrapper.svelteProps || {};
+		Object.keys(themeImports).forEach(key => {
+			if(key == 'forloop_index' || key == 'component_index' || key == 'component_name') return;
+			wrapper.svelteProps[key] = [
+				...(wrapper.svelteProps[key] || []),
+				{ forloop_index: themeImports.index, component_index: themeImports.component_index, component_name: themeImports.component_name, value: themeImports[key] }
+			];
+		});
 	} catch (e) {
 	const err = 'There was an error';
 	console.error('there was an error parsing props json', e);
@@ -498,7 +533,7 @@ function outpusLiquidAndSchemas (module)
 	wrapper.svelteProps["form_inputs_${entry.id}"] = [...(wrapper.svelteProps["form_inputs_${entry.id}"] || []), ...window.liquivelte_form_inputs['form_inputs_${entry.id}'].map(e => htmlDecode(e)) ];
 	} catch (e) {
 	const err = 'Could not get form inputs, because it is not present in the liquid context please check for ${entry.id} in the ${fileName} file.';
-	console.error(err);
+	console.warn(err);
 	wrapper.svelteProps = { ...wrapper.svelteProps, error: (wrapper.svelteProps.error || '') + err};
 	}
 	try{
@@ -524,6 +559,7 @@ function outpusLiquidAndSchemas (module)
 	[...wrapper.querySelectorAll('[liquivelte-value-cache]')].forEach(el => {
 	let [filter, args, value] = el.getAttribute('liquivelte-value-cache').split('§');
 	args = args.split(', ');
+	args[0] = args[0].replace(/^"|\\\\|"$/g, '');
 	wrapper.liquid_expression_cache = wrapper.liquid_expression_cache || {};
 	wrapper.liquid_expression_cache[filter] = wrapper.liquid_expression_cache[filter] || new Map;
 	wrapper.liquid_expression_cache[filter].set(\`\${args.join(',')}\`, value);
@@ -539,36 +575,51 @@ function outpusLiquidAndSchemas (module)
 
 		const propsContent = `
 	${liquidImportsModule.some(v => v == 'cart') ? CART_JSON_LIQUID  : ''}					
-	${subImportsRegistryModule.some(v => v.id == 'section$blocks') ? SECTION_BLOCKS_LIQUID  : ''}					
-	<script type="text/noscript" class="instance-data">{
+	${subImportsRegistryModule.some(v => v.id == 'sectionƒƒblocks') ? SECTION_BLOCKS_LIQUID : ''}	
+	<script type="text/noscript" class="instance-data" >
+		{% assign component_include_count = component_include_count | plus: 1 %}
+		{
 	${liquidImportsModule
 				.map(v => 	v == 'cart' ?
 					`"${v}": {{ cart_json }}`
 					: `"${v}" : {{ ${v} | json }} `)
-				.join(', ')
+				.join(', ').trim()
 			}
 	${liquidImportsModule.length && subImportsRegistryModule.length ? ',' : ''}
 	${subImportsRegistryModule
 			.map(v =>
-				v.id == 'section$blocks' ?
+				v.id == 'sectionƒƒblocks' ?
 					`"${v.id}": {{ section_blocks_json }}`
 				: `"${v.id}": {{ ${v.importStatement} | json }} `)
-				.join(', ')
+				.join(', ').trim()
 			}
-
+		${liquidImportsModule.length || subImportsRegistryModule.length ? ',' : ''}
+		"forloop_index": {{ forloop.index0 | default: 0 | json }},
+		"component_index": {{ component_include_count | plus: component_include_depth }},
+		"component_name": "${snippet_name}"
 	}</script>
 	`;
 
 		finalLiquidContent = `
+	${liquidPropsResetter}
 	${liquidPropsParser}
+	${slotsParser}
 	{%- unless sub_include -%} 
 	<div class="liquivelte-component ${fileName.replace('.liquivelte', '').replace('.liquid', '')}" data-liquivelte-component-name="${fileName.replace('.liquid', '')}">
+		{% assign component_include_count_slot_offset = 0 %}
+		{% assign component_include_count = 0 %}
+		{% assign component_include_depth = 0 %}
+		<script> window.cicR = 0; </script>
 	{%- endunless -%}
 	${finalLiquidContent}
 	${propsContent}
 	${propsParserScript}
+	${liquidPropsResetter}
+	${slotsResetter}
+	
 	{%- unless sub_include -%} 
 	</div>
+	{% assign component_include_count = 0 %}
 	{%- endunless -%}
 	`;
 
@@ -579,7 +630,7 @@ function outpusLiquidAndSchemas (module)
 		/* -------------------------------------------------------------------------- */
 		/*                            OUTPUT LIQUID CONTENT                           */
 		/* -------------------------------------------------------------------------- */
-		fs.outputFileSync(dest, finalLiquidContent);
+		fs.outputFileSync(dest, finalLiquidContent.replace(/^\s*[$\n]/g, ''));
 	} catch (err) {
 		console.log('error in liquid generation ', err);
 	}
@@ -592,7 +643,7 @@ function outpusLiquidAndSchemas (module)
 			[...this.moduleIds].filter(id => /\.liquivelte$/.test(id)).forEach(m =>
 			{
 				const module = this.getModuleInfo(m);
-				outpusLiquidAndSchemas.call(this, module);
+				outputLiquidAndSchemas.call(this, module);
 			});
 		
 		const entryPoints = Object.keys(bundle).map(key => bundle[key]).filter(b => b.isEntry);
@@ -635,7 +686,7 @@ export function css(options) {
           map: { mappings: '' }
         }
       }
-
+			// console.log('style ', id);
       // Track the order that each stylesheet is imported.
       if (!order.includes(id)) {
         order.push(id);
@@ -707,16 +758,31 @@ export function css(options) {
 			// 	getModules(firstModule);
 			// 	return allModules;
 			// }
-
 			[...Object.keys(bundle).map(k => bundle[k])].filter(m => m.isEntry).map(m =>
 			{
-				const css = [...m.imports, ...m.dynamicImports].reduce((c, imp) =>
+				const processedModules = new Set([m.fileName]);
+				function getStyles (imp)
 				{
 					const styleModules = !bundle[imp] || !bundle[imp].modules ? [] : Object.keys(bundle[imp].modules).filter(m => m.slice(-4) === '.css');
-					// const styleModules = Object.keys(styles).filter(s => s.indexOf(imp.replace(/-hs.+\.js/, '')) > -1);
-					const style = styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
-					return `${c} ${style || ''}`;
-				}, '');
+					return styleModules.reduce((_c, m) => `${_c} ${styles[m]}`, '');
+				}
+
+				function getImportedStyles (m)
+				{
+					const moduleStyles = styles[`${(m.facadeModuleId || '').replace(/\.[^\.]+$/, '.css')}`]
+					return [...m.imports, ...m.dynamicImports].reduce((c, imp) =>
+					{
+						const circular = processedModules.has(imp);
+						processedModules.add(imp);
+						let style = getStyles(imp);
+						if (!circular && bundle[imp]) {
+							style += getImportedStyles(bundle[imp]);
+						}
+						return `${c} ${style || ''}`;
+						}, moduleStyles || '');
+				}
+
+				const css = getImportedStyles(m);
 
 				this.emitFile({ type: 'asset', fileName: `${m.fileName.slice(0, -3)}.css`, source: css });
 			});

@@ -5,7 +5,7 @@ import MagicString from 'magic-string';
 import getLineFromOffset from '../../../utils/get-line-from-offset';
 import createTagRegex from '../../../utils/create-tag-regex';
 
-export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations } : {liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[]}): ReplaceResult
+export default function themeImportProcessor (script: string, ms: MagicString, { liquidImportsModule, subImportsRegistryModule, replaceOperations, filename }: { liquidImportsModule?: string[], subImportsRegistryModule?: SubImportRegistryModule, replaceOperations: any[], filename?: string}): ReplaceResult
 {  
   script.replace(/import\s+(.*?)(\..*?)?\s*from\s*['"]theme(.*)['"]/gim, (a, obj, subObject, afterTheme, offset) =>
   {
@@ -17,14 +17,14 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       /*              IMPORT FROM THEME IS SOMETHING LIKE product.image             */
       /* -------------------------------------------------------------------------- */
       const entry: SubImportsRegistryModuleEntry = {
-        id: `${obj}${subObject.replace(/\./gi, '$$')}`,
+        id: `${obj}${subObject.replace(/\./gi, 'ƒƒ')}`,
         importStatement: `${obj}${subObject}`
       };
 
       if (!subImportsRegistryModule.some(subImport => subImport.id === entry.id)) {
         subImportsRegistryModule.push(entry);
       }
-      ms.overwrite(offset, offset + a.length, `export let ${obj}${subObject.replace(/\./gi, '$$')}; \n${obj}${subObject} = ${obj}${subObject.replace(/\./gi, '$$')}`);
+      ms.overwrite(offset, offset + a.length, `export let ${obj}${subObject.replace(/\./gi, 'ƒƒ')}; \ntry{${obj} = ${obj} || {};}catch(e){/*whatever*/}\n${obj}${subObject} = themeImports['${obj}${subObject.replace(/\./gi, 'ƒƒ')}'].find(e => e.component_index == fc(themeImports['${obj}${subObject.replace(/\./gi, 'ƒƒ')}'].map(e => e.component_index), cic, importsSeek)).value`);
       replaceOperations.push({
         was: {
           lines: [line]
@@ -33,7 +33,7 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
           lines: [line, line + 1]
         },
         linesAdded: 1,
-        explanation: `${obj}${subObject.replace(/\./gi, '$$')} will be imported as a top level prop. [var]$[var] syntax is for internal use.`
+        explanation: `${obj}${subObject.replace(/\./gi, 'ƒƒ')} will be imported as a top level prop. [var]ƒ[var] syntax is for internal use.`
       });
       return '';
     } else {
@@ -43,9 +43,8 @@ export default function themeImportProcessor (script: string, ms: MagicString, {
       if (!liquidImportsModule.some(liquidImport => liquidImport === obj)) {
         liquidImportsModule.push(obj);
       }
-      ms.remove(offset, offset + 'import '.length);
-      ms.appendLeft(offset, 'export let ');
-      ms.remove(offset + ('import ' + obj).length, offset + ('import ' + obj).length + ` from \'theme${afterTheme}\'`.length);
+      ms.overwrite(offset, offset + a.length, `export let ${obj} = themeImports['${obj}'].find(e => e.component_index == fc(themeImports['${obj}'].map(e => e.component_index), cic, importsSeek)).value`);
+
       replaceOperations.push({
         was: {
           lines: [line]

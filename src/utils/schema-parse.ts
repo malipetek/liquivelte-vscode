@@ -78,10 +78,10 @@ export function mergeSchemas (schema: Schema, subSchema: Schema | false): Schema
     schema = { ...schema, blocks: [...(schema.blocks), subSchema] };
   } else {
     schema = {
-      ...schema, settings: [...(schema.settings || []), ...(subSchema.name ? [{
+      ...schema, settings: [...(schema?.settings || []), ...(subSchema.name ? [{
         type: "header",
         content: subSchema.name,
-      }] : []), ...(subSchema.settings || [])]
+      }] : []), ...(subSchema?.settings || [])]
     };
   }
   return schema;
