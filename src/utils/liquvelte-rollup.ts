@@ -682,7 +682,7 @@ export function css(options) {
       // When output is disabled, the stylesheet is exported as a string
       if (options.output === false) {
         return {
-          code: 'export default ' + JSON.stringify(code),
+          code: ' default ' + JSON.stringify(code),
           map: { mappings: '' }
         }
       }

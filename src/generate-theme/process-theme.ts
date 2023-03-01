@@ -3,8 +3,8 @@ import getThemeDirectory from '../utils/get-theme-directory';
 import fs from 'fs-extra';
 import chokidar from 'chokidar';
 
-import { rollup, watch } from 'rollup';
-
+import { watch } from 'rollup';
+import { build as viteBuild } from 'vite';
 
 // import css from 'rollup-plugin-css-chunks';
 import path from 'path';
@@ -231,12 +231,26 @@ async function build (inputs, outputOptionsList, pass)
   let bundle;
   try {
     // create a bundle
-    bundle = await rollup(inputs);
+    bundle = await viteBuild({
+      root: vscode.Uri.joinPath(workspaceFolders[0].uri).fsPath,
+      base: '/assets/',
+      build: {
+        lib: {
+          entry: inputs.input,
+          formats: ['es']
+        },
+        minify: false,
+        rollupOptions: {
+          ...inputs,
+          output: outputOptionsList,
+        }
+      }
+    });
 
-    if (pass === 2) {
-      sendStats();
-      await generateOutputs({bundle, outputOptionsList});
-    }
+    // if (pass === 2) {
+    //   sendStats();
+    //   await generateOutputs({bundle, outputOptionsList});
+    // }
   } catch (error) {
     // do some error reporting
     state.buildErrors = [...state.buildErrors, JSON.parse(JSON.stringify({...error, message: error.message, stack: error.stack}))];
@@ -244,7 +258,7 @@ async function build (inputs, outputOptionsList, pass)
   }
   if (bundle) {
     // closes the bundle
-    await bundle.close();
+    // await bundle.close();
   }
 
 }
@@ -254,16 +268,19 @@ async function startWatch (inputs, outputOptionsList, pass)
   let watcher;
   try {
     // create a bundle
-    watcher = watch({
+  watcher = await viteBuild({
+    build: {
+      rollupOptions: {
       ...inputs,
-      output: outputOptionsList,
+        output: outputOptionsList,
+      },
       watch: {
         buildDelay: 1000,
-        chokidar,
         clearScreen: true,
         skipWrite: false,
       }
-    });
+    }
+  });
     watcher.on('event', async event =>
     {
       if (event.code == 'BUNDLE_START') {

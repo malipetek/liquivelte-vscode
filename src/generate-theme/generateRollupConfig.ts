@@ -8,7 +8,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import alias from '@rollup/plugin-alias';
 import { terser } from 'rollup-plugin-terser';
 import typescript from '@rollup/plugin-typescript';
-// import postcss from 'rollup-plugin-postcss';
+import postcss from 'rollup-plugin-postcss';
 import { css } from '../utils/liquvelte-rollup';
 // import css from 'rollup-plugin-css-only';
 
@@ -245,8 +245,8 @@ export const inputOptions = async () =>
     // postcss({
     //   extract: true,
     // }),
-    css(),
-    (production &&
+    css({}),
+    (!production &&
       terser({
         module: true,
         compress: { join_vars: false, collapse_vars: false, dead_code: false, drop_console: true, unused: false },
