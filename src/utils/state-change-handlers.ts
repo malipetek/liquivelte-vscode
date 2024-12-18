@@ -2,36 +2,47 @@ import vscode from 'vscode';
 import state from './state';
 
 function handleSchema (a, content, offset)
-		{
-			try {
-				const schema = JSON.parse(content);
-				state['sidebar'].webview.postMessage({
-					type: "schema-changed",
-					data: schema
-				});
-			} catch (err) {
-				// 
-				const offset = parseInt(err.message.match(/position\s+(\d+)/)[1], 10);
-				const linesUntilError = content.slice(0, offset + 1).split('\n');
-				const errorLine = linesUntilError.length;
-				const contentLines = content.split('\n');
-				const lineOffset = linesUntilError[linesUntilError.length - 1].length - 1;
-				const message = contentLines.slice(0, errorLine).join('\n') +
-					'\n' + new Array(lineOffset).fill(' ').join('') +
-					'👆\n' + contentLines.slice(errorLine).join('\n');
-				state['sidebar'].webview.postMessage({
-					type: "schema-error",
-					data: { message: err.message, content: message }
-				});
-				state['sidebar'].webview.postMessage({
-					type: "schema-changed",
-					data: false
-				});
-			}
-			
-			return '';
+{
+	try {
+		const schema = JSON.parse(content);
+		state['sidebar'].webview.postMessage({
+			type: "schema-changed",
+			data: schema
+		});
+	} catch (err) {
+		const offset = parseInt(err.message.match(/position\s+(\d+)/)[1], 10);
+		const linesUntilError = content.slice(0, offset + 1).split('\n');
+		const errorLine = linesUntilError.length;
+		const contentLines = content.split('\n');
+		const lineOffset = linesUntilError[linesUntilError.length - 1].length - 1;
+		const message = contentLines.slice(0, errorLine).join('\n') +
+			'\n' + new Array(lineOffset).fill(' ').join('') +
+			'👆\n' + contentLines.slice(errorLine).join('\n');
+		state['sidebar'].webview.postMessage({
+			type: "schema-error",
+			data: { message: err.message, content: message }
+		});
+		state['sidebar'].webview.postMessage({
+			type: "schema-changed",
+			data: false
+		});
+	}
+	return '';
 }
-			
+
+async function handleFileContent(fileContent, isSchemaJSON) {
+	if (/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim.test(fileContent)) {
+		fileContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, handleSchema);
+	} else if (isSchemaJSON) {
+		handleSchema(null, fileContent, null);
+	} else {
+		state['sidebar'].webview.postMessage({
+			type: "schema-changed",
+			data: false
+		});
+	}
+}
+
 export async function fileChangeHandler (uriOrDocument: vscode.Uri | vscode.TextDocument)
 {
 	let fileContent = '';
@@ -47,16 +58,7 @@ export async function fileChangeHandler (uriOrDocument: vscode.Uri | vscode.Text
 		fileContent = await uriOrDocument.getText();
 	}
 
-	if (/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim.test(fileContent)) {
-			fileContent.replace(/\{%-*\s*schema\s*-*%\}([^*]+)\{%-?\s+endschema\s+-?%\}/gim, handleSchema);
-	} else if (isSchemaJSON) {
-		handleSchema(null, fileContent, null);
-	} else {
-		state['sidebar'].webview.postMessage({
-			type: "schema-changed",
-			data: false
-		});
-	}
+	await handleFileContent(fileContent, isSchemaJSON);
 }
 
 export async function activeFileChangeHandler (editor: vscode.TextEditor)

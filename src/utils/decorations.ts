@@ -4,7 +4,6 @@ import { ReplaceOperation } from '../types/replace-operation';
 
 let timeout: NodeJS.Timer | undefined = undefined;
 
-
 const deco = vscode.window.createTextEditorDecorationType({
   isWholeLine: false,
   backgroundColor: 'rgba(60, 255, 0, 0.06)'
@@ -19,7 +18,6 @@ const activeDeco = vscode.window.createTextEditorDecorationType({
 
 function updateDecorations (operations: ReplaceOperation[])
 {
-
   const decorations = operations.filter(op => !op.active).map((operation: ReplaceOperation) =>
   {
     const position1 = new vscode.Position(operation.was.lines[0] - 1, operation.was.start);
@@ -48,7 +46,6 @@ function updateDecorations (operations: ReplaceOperation[])
     };
   });
 
-  // editor.setDecorations(deco, decorations);
   state['openPreview'].setDecorations(activeDeco, activeDecorations);
 }
 
