@@ -238,8 +238,16 @@
         {
           "include": "#comments"
         },
+        // Add Liquid tags before Svelte special tags
+        {
+          "include": "#liquid-tags"
+        },
         {
           "include": "#special-tags"
+        },
+        // Add liquivelte-expression before general interpolation
+        {
+          "include": "#liquivelte-expression"
         },
         {
           "include": "#tags"
@@ -252,6 +260,55 @@
           "end": "(?=<|{[{%]?-?)",
           "name": "text.liquivelte"
         }
+      ]
+    },
+    "string-quoted-single-liquid": {
+        "name": "string.quoted.single.liquid",
+        "begin": "'",
+        "end": "'",
+        "patterns": [{ "include": "#interpolation" }]
+    },
+    "string-quoted-double-liquid": {
+        "name": "string.quoted.double.liquid",
+        "begin": "\"",
+        "end": "\"",
+        "patterns": [{ "include": "#interpolation" }]
+    },
+    "liquid-tags": {
+        "name": "meta.tag.liquid",
+        "begin": "\\{%-?",
+        "end": "-?%\\}",
+        "beginCaptures": {
+            "0": { "name": "punctuation.definition.tag.begin.liquid" }
+        },
+        "endCaptures": {
+            "0": { "name": "punctuation.definition.tag.end.liquid" }
+        },
+        "patterns": [
+            {
+                "match": "\\G\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\b",
+                "captures": {
+                    "1": { "name": "entity.name.tag.liquid" }
+                }
+            },
+            { "include": "#string-quoted-single-liquid" },
+            { "include": "#string-quoted-double-liquid" }
+            // Future: Add more Liquid-specific patterns here like numbers, operators, variables if needed
+        ]
+    },
+    "liquivelte-expression": {
+      "name": "meta.expression.liquivelte",
+      "begin": "\\{\\{-",
+      "end": "-\\}\\}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.expression.begin.liquivelte" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.expression.end.liquivelte" }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        { "include": "source.ts" }
       ]
     },
     "comments": {
@@ -327,8 +384,10 @@
     "interpolation": {
       "patterns": [
         {
-          "begin": "\\{\\{?-?",
-          "end": "-?\\}?\\}",
+          // Svelte expressions: { ... }
+          // Does not match {{ ... }} or {{- ... -}}
+          "begin": "\\{(?!\\{|-)",
+          "end": "\\}",
           "beginCaptures": {
             "0": {
               "name": "punctuation.section.embedded.begin.liquivelte"
@@ -371,7 +430,9 @@
       ]
     },
     "special-tags-keywords": {
-      "match": "([%#@/:-{])\\s?(else\\s+if|[a-z]*)",
+      // Svelte keywords are prefixed by #, @, :, or /
+      // Removed % and { from the initial character group
+      "match": "([#@/:])\\s?(else\\s+if|[a-z]*)",
       "captures": {
         "1": {
           "name": "punctuation.definition.keyword.liquivelte"
@@ -605,12 +666,14 @@
       ]
     },
     "special-tags-void": {
-      "begin": "({[%-]*)\\s*((?:[@:])(else\\s+if|unless|elsif|[a-z]*))",
+      // For Svelte tags like {@html ...}, {:else ...}
+      // Ensures it starts with { followed by @ or :
+      "begin": "({)\\s*(([@:])(?:else\\s+if|[a-z]*))",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.block.begin.liquivelte"
         },
-        "2": {
+        "2": { // This captures the full keyword part like "@html" or ":else if"
           "patterns": [
             {
               "include": "#special-tags-keywords"
@@ -632,9 +695,11 @@
       ]
     },
     "special-tags-block-begin": {
-      "begin": "({)\\s*([#%-]*\\s*([a-z]*))",
+      // For Svelte main blocks like {#if ...}, {#each ...}
+      // Ensures it starts with { followed by #
+      "begin": "({)\\s*((#)[a-z]*)",
       "end": "([-%]*})",
-      "name": "meta.special.$3.liquivelte meta.special.start.liquivelte",
+      "name": "meta.special.$3.liquivelte meta.special.start.liquivelte", // $3 is the keyword like "if"
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.block.begin.liquivelte"
@@ -659,9 +724,11 @@
       ]
     },
     "special-tags-block-end": {
-      "begin": "({)\\s*([/%-]*([a-z]*))",
+      // For Svelte end blocks like {/if}, {/each}
+      // Ensures it starts with { followed by /
+      "begin": "({)\\s*((/)[a-z]*)",
       "end": "([-%]*})",
-      "name": "meta.special.$3.liquivelte meta.special.end.liquivelte",
+      "name": "meta.special.$3.liquivelte meta.special.end.liquivelte", // $3 is the keyword like "if"
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.block.begin.liquivelte"
